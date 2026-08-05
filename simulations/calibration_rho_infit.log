@@ -1,0 +1,333 @@
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+panic: nng is not fork-reentrant safe
+panic: nng is not fork-reentrant safe
+This message is indicative of a BUG.
+Report this at https://github.com/nanomsg/nng/issues
+This message is indicative of a BUG.
+Report this at https://github.com/nanomsg/nng/issues
+1   nanonext.so                         0x000000010f1a502c nni_plat_init + 44
+2   nanonext.so                         0x000000010f196260 nni_ctx_find + 32
+1   nanonext.so                         0x000000010f1a502c nni_plat_init + 44
+2   nanonext.so                         0x000000010f196260 nni_ctx_find + 32
+3   nanonext.so                         0x000000010f185260 nng_ctx_close + 32
+4   nanonext.so                         0x000000010f17396c context_finalizer + 443   nanonext.so                         0x000000010f185260 nng_ctx_close + 32
+4   nanonext.so                         0x000000010f17396c context_finalizer + 44
+5   libR.dylib                          0x0000000101985b98 R_RunWeakRefFinalizer + 408
+
+5   libR.dylib                          0x0000000101985b98 R_RunWeakRefFinalizer + 408
+6   libR.dylib                          0x00000001019860e8 RunFinalizers + 616
+6   libR.dylib                          0x00000001019860e8 RunFinalizers + 616
+7   libR.dylib                          0x00000001019443b4 bcEval_loop + 6580
+8   libR.dylib                          0x00000001019347f4 bcEval + 6287   libR.dylib                          0x00000001019443b4 bcEval_loop + 6580
+8   libR.dylib                          0x00000001019347f4 bcEval + 628
+9   libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+10  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+9   libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+10  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+
+11  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+12  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+11  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+12  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+13  stats.so                            0x00000001063696dc fminfn + 28413  stats.so                            0x000000010636997c fmingr + 316
+14  libR.dylib                          0x0000000101a3a93c vmmin + 1596
+15  stats.so                            0x000000010636902c optim + 4908
+16  libR.dylib                          0x000000010190165c do_External + 284
+
+14  libR.dylib                          0x0000000101a3a86c vmmin + 1388
+15  stats.so                            0x000000010636902c optim + 4908
+17  libR.dylib                          0x0000000101947a64 bcEval_loop + 20580
+18  libR.dylib                          0x00000001019347f4 bcEval + 628
+19  libR.dylib                          0x0000000101933ea4 Rf_eval + 35616  libR.dylib                          0x000000010190165c do_External + 284
+17  libR.dylib                          0x0000000101947a64 bcEval_loop + 20580
+18  libR.dylib                          0x00000001019347f4 bcEval + 628
+19  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+
+20  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+21  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+20  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+21  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+22  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+23  libR.dylib                          0x0000000101934a78 forcePromise + 248
+22  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+23  libR.dylib                          0x0000000101934a78 forcePromise + 248
+24  libR.dylib                          0x0000000101953b9c getvar + 412
+25  libR.dylib                          0x000000010194d0d8 bcEval_loop + 42712
+24  libR.dylib                          0x0000000101953b9c getvar + 412
+25  libR.dylib                          0x000000010194d0d8 bcEval_loop + 42712
+26  libR.dylib                          0x00000001019347f4 bcEval + 628
+27  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+28  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+29  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+30  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+31  libR.dylib                          0x000000010193a324 do_set + 356
+26  libR.dylib                          0x00000001019347f4 bcEval + 628
+27  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+28  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+29  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+32  libR.dylib                          0x0000000101934140 Rf_eval + 1024
+33  libR.dylib                          0x0000000101939314 do_begin + 404
+34  libR.dylib                          0x0000000101934140 Rf_eval + 1024
+35  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+36  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+37  libR.dylib                          0x0000000101936238 R_forceAndCall + 888
+30  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+31  libR.dylib                          0x000000010193a324 do_set + 356
+32  libR.dylib                          0x0000000101934140 Rf_eval + 1024
+33  libR.dylib                          0x0000000101939314 do_begin + 404
+38  libR.dylib                          0x0000000101890124 do_lapply + 1124
+39  libR.dylib                          0x00000001019967d0 do_internal + 400
+40  libR.dylib                          0x000000010194a234 bcEval_loop + 3077234  libR.dylib                          0x0000000101934140 Rf_eval + 1024
+35  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+36  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+37  libR.dylib                          0x0000000101936238 R_forceAndCall + 888
+38  libR.dylib                          0x0000000101890124 do_lapply + 1124
+39  libR.dylib                          0x00000001019967d0 do_internal + 400
+41  libR.dylib                          0x00000001019347f4 bcEval + 628
+42  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+
+40  libR.dylib                          0x000000010194a234 bcEval_loop + 30772
+41  libR.dylib                          0x00000001019347f4 bcEval + 628
+42  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+43  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+44  libR.dylib                          0x0000000101935ba4 applyClosure_core + 16443  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+44  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+45  libR.dylib                          0x0000000101936238 R_forceAndCall + 888
+46  libR.dylib                          0x0000000101890124 do_lapply + 1124
+47  libR.dylib                          0x00000001019967d0 do_internal + 400
+48  libR.dylib                          0x000000010194a234 bcEval_loop + 30772
+49  libR.dylib                          0x00000001019347f4 bcEval + 628
+45  libR.dylib                          0x0000000101936238 R_forceAndCall + 888
+46  libR.dylib                          0x0000000101890124 do_lapply + 1124
+47  libR.dylib                          0x00000001019967d0 do_internal + 400
+48  libR.dylib                          0x000000010194a234 bcEval_loop + 30772
+49  libR.dylib                          0x00000001019347f4 bcEval + 628
+
+panic: nng is not fork-reentrant safe
+This message is indicative of a BUG.
+Report this at https://github.com/nanomsg/nng/issues
+1   nanonext.so                         0x000000010f1a502c nni_plat_init + 44
+2   nanonext.so                         0x000000010f196260 nni_ctx_find + 32
+3   nanonext.so                         0x000000010f185260 nng_ctx_close + 32
+4   nanonext.so                         0x000000010f17396c context_finalizer + 44
+5   libR.dylib                          0x0000000101985b98 R_RunWeakRefFinalizer + 408
+6   libR.dylib                          0x00000001019860e8 RunFinalizers + 616
+7   libR.dylib                          0x00000001019443b4 bcEval_loop + 6580
+8   libR.dylib                          0x00000001019347f4 bcEval + 628
+9   libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+10  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+11  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+12  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+13  stats.so                            0x00000001063696dc fminfn + 284
+14  libR.dylib                          0x0000000101a3a86c vmmin + 1388
+15  stats.so                            0x000000010636902c optim + 4908
+16  libR.dylib                          0x000000010190165c do_External + 284
+17  libR.dylib                          0x0000000101947a64 bcEval_loop + 20580
+18  libR.dylib                          0x00000001019347f4 bcEval + 628
+19  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+20  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+21  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+22  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+23  libR.dylib                          0x0000000101934a78 forcePromise + 248
+24  libR.dylib                          0x0000000101953b9c getvar + 412
+25  libR.dylib                          0x000000010194d0d8 bcEval_loop + 42712
+26  libR.dylib                          0x00000001019347f4 bcEval + 628
+27  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+28  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+29  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+30  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+31  libR.dylib                          0x000000010193a324 do_set + 356
+32  libR.dylib                          0x0000000101934140 Rf_eval + 1024
+33  libR.dylib                          0x0000000101939314 do_begin + 404
+34  libR.dylib                          0x0000000101934140 Rf_eval + 1024
+35  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+36  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+37  libR.dylib                          0x0000000101936238 R_forceAndCall + 888
+38  libR.dylib                          0x0000000101890124 do_lapply + 1124
+39  libR.dylib                          0x00000001019967d0 do_internal + 400
+40  libR.dylib                          0x000000010194a234 bcEval_loop + 30772
+41  libR.dylib                          0x00000001019347f4 bcEval + 628
+42  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+43  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+44  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+45  libR.dylib                          0x0000000101936238 R_forceAndCall + 888
+46  libR.dylib                          0x0000000101890124 do_lapply + 1124
+47  libR.dylib                          0x00000001019967d0 do_internal + 400
+48  libR.dylib                          0x000000010194a234 bcEval_loop + 30772
+49  libR.dylib                          0x00000001019347f4 bcEval + 628
+panic: nng is not fork-reentrant safe
+This message is indicative of a BUG.
+Report this at https://github.com/nanomsg/nng/issues
+1   nanonext.so                         0x000000010f1a502c nni_plat_init + 44
+2   nanonext.so                         0x000000010f196260 nni_ctx_find + 32
+3   nanonext.so                         0x000000010f185260 nng_ctx_close + 32
+4   nanonext.so                         0x000000010f17396c context_finalizer + 44
+5   libR.dylib                          0x0000000101985b98 R_RunWeakRefFinalizer + 408
+6   libR.dylib                          0x00000001019860e8 RunFinalizers + 616
+7   libR.dylib                          0x00000001019443b4 bcEval_loop + 6580
+8   libR.dylib                          0x00000001019347f4 bcEval + 628
+9   libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+10  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+11  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+12  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+13  stats.so                            0x00000001063696dc fminfn + 284
+14  libR.dylib                          0x0000000101a3a86c vmmin + 1388
+15  stats.so                            0x000000010636902c optim + 4908
+16  libR.dylib                          0x000000010190165c do_External + 284
+17  libR.dylib                          0x0000000101947a64 bcEval_loop + 20580
+18  libR.dylib                          0x00000001019347f4 bcEval + 628
+19  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+20  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+21  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+22  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+23  libR.dylib                          0x0000000101934a78 forcePromise + 248
+24  libR.dylib                          0x0000000101953b9c getvar + 412
+panic: nng is not fork-reentrant safe
+This message is indicative of a BUG.
+Report this at https://github.com/nanomsg/nng/issues
+25  libR.dylib                          0x000000010194d0d8 bcEval_loop + 42712
+26  libR.dylib                          0x00000001019347f4 bcEval + 628
+27  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+28  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+29  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+30  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+31  libR.dylib                          0x000000010193a324 do_set + 356
+32  libR.dylib                          0x0000000101934140 Rf_eval + 1024
+33  libR.dylib                          0x0000000101939314 do_begin + 404
+34  libR.dylib                          0x0000000101934140 Rf_eval + 1024
+35  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+36  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+37  libR.dylib                          0x0000000101936238 R_forceAndCall + 888
+38  libR.dylib                          0x0000000101890124 do_lapply + 1124
+39  libR.dylib                          0x00000001019967d0 do_internal + 400
+40  libR.dylib                          0x000000010194a234 bcEval_loop + 30772
+41  libR.dylib                          0x00000001019347f4 bcEval + 628
+42  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+43  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+44  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+45  libR.dylib                          0x0000000101936238 R_forceAndCall + 888
+46  libR.dylib                          0x0000000101890124 do_lapply + 1124
+47  libR.dylib                          0x00000001019967d0 do_internal + 400
+48  libR.dylib                          0x000000010194a234 bcEval_loop + 30772
+49  libR.dylib                          0x00000001019347f4 bcEval + 628
+1   nanonext.so                         0x000000010f1a502c nni_plat_init + 44
+2   nanonext.so                         0x000000010f196260 nni_ctx_find + 32
+3   nanonext.so                         0x000000010f185260 nng_ctx_close + 32
+4   nanonext.so                         0x000000010f17396c context_finalizer + 44
+5   libR.dylib                          0x0000000101985b98 R_RunWeakRefFinalizer + 408
+6   libR.dylib                          0x00000001019860e8 RunFinalizers + 616
+7   libR.dylib                          0x00000001019443b4 bcEval_loop + 6580
+8   libR.dylib                          0x00000001019347f4 bcEval + 628
+9   libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+10  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+11  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+12  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+13  stats.so                            0x00000001063696dc fminfn + 284
+14  libR.dylib                          0x0000000101a3a86c vmmin + 1388
+15  stats.so                            0x000000010636902c optim + 4908
+16  libR.dylib                          0x000000010190165c do_External + 284
+17  libR.dylib                          0x0000000101947a64 bcEval_loop + 20580
+18  libR.dylib                          0x00000001019347f4 bcEval + 628
+19  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+20  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+21  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+22  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+23  libR.dylib                          0x0000000101934a78 forcePromise + 248
+24  libR.dylib                          0x0000000101953b9c getvar + 412
+25  libR.dylib                          0x000000010194d0d8 bcEval_loop + 42712
+26  libR.dylib                          0x00000001019347f4 bcEval + 628
+27  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+28  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+29  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+30  libR.dylib                          0x00000001019343a8 Rf_eval + 1640
+31  libR.dylib                          0x000000010193a324 do_set + 356
+32  libR.dylib                          0x0000000101934140 Rf_eval + 1024
+33  libR.dylib                          0x0000000101939314 do_begin + 404
+34  libR.dylib                          0x0000000101934140 Rf_eval + 1024
+35  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+36  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+37  libR.dylib                          0x0000000101936238 R_forceAndCall + 888
+38  libR.dylib                          0x0000000101890124 do_lapply + 1124
+39  libR.dylib                          0x00000001019967d0 do_internal + 400
+40  libR.dylib                          0x000000010194a234 bcEval_loop + 30772
+41  libR.dylib                          0x00000001019347f4 bcEval + 628
+42  libR.dylib                          0x0000000101933ea4 Rf_eval + 356
+43  libR.dylib                          0x0000000101936a9c R_execClosure + 796
+44  libR.dylib                          0x0000000101935ba4 applyClosure_core + 164
+45  libR.dylib                          0x0000000101936238 R_forceAndCall + 888
+46  libR.dylib                          0x0000000101890124 do_lapply + 1124
+47  libR.dylib                          0x00000001019967d0 do_internal + 400
+48  libR.dylib                          0x000000010194a234 bcEval_loop + 30772
+49  libR.dylib                          0x00000001019347f4 bcEval + 628
+Warning message:
+In mclapply(seq_len(nrow(agrid)), function(i) { :
+  scheduled cores 4, 6, 7, 8, 9 did not deliver results, all values of the jobs will be affected
+   rho infit.dichotomous infit.polytomous
+1 0.15          1.612281         2.714237
+3 0.50          1.375657         2.092375
+5 0.75          1.210689         1.573049
+7 0.85          1.128879         1.363559
+9 0.90          1.092726         1.235726
+
+real phq9 item fit:
+  Item Infit_MSQ padj_infit  Flagged
+1   q1     0.946   0.490509         
+2   q2     0.778   0.000999  overfit
+3   q3     1.234   0.000999 underfit
+4   q4     0.835   0.004995  overfit
+5   q5     1.069   0.421578         
+6   q6     0.895   0.140859         
+7   q7     0.986   0.799201         
+8   q8     1.260   0.000999 underfit
+9   q9     1.315   0.000999 underfit
+
+phq9 arm anchoring (mean infit of q5):
+   rho    infit
+1 0.75 1.362409
+2 0.85 1.320096
+3 0.90 1.239228
+Error: unexpected numeric constant in "on (part 1"
+Execution halted

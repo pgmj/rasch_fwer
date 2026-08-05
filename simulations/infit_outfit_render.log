@@ -1,0 +1,65 @@
+[31m
+
+processing file: infit_outfit.qmd
+[39m1/35                 
+2/35 [setup]         
+3/35                 
+4/35 [runner]        
+5/35                 
+6/35 [arms]          
+7/35                 
+8/35 [simfun]        
+9/35                 
+10/35 [run]           
+11/35                 
+12/35 [calib]         
+13/35                 
+14/35 [calib-null]    
+15/35                 
+16/35 [fwe]           
+17/35                 
+18/35 [marginal]      
+19/35                 
+20/35 [det]           
+21/35                 
+22/35 [fig-det]       
+23/35                 
+24/35 [fp]            
+25/35                 
+26/35 [fp-dir]        
+27/35                 
+28/35 [discord-helper]
+29/35                 
+30/35 [discord]       
+31/35                 
+32/35 [discord-null]  
+33/35                 
+34/35 [session]       
+35/35                 
+[31moutput file: infit_outfit.knit.md
+
+[39m[1mpandoc [22m
+  to: typst
+  output-file: infit_outfit.typ
+  standalone: true
+  shift-heading-level-by: -1
+  default-image-extension: svg
+  wrap: none
+  citeproc: false
+  toc: true
+  variables: {}
+  
+[1mmetadata[22m
+  engines:
+    - path: /Applications/quarto/share/extension-subtrees/julia-engine/_extensions/julia-engine/julia-engine.js
+  papersize: a4
+  fontsize: 9pt
+  title: Conditional infit versus outfit under family-wise error control
+  subtitle: Dichotomous and polytomous items, B = 1000, Westfall-Young
+  author: Magnus Johansson
+  date: today
+  
+[typst]: Compiling infit_outfit.typ to infit_outfit.pdf...DONE
+
+Output created: infit_outfit.pdf
+

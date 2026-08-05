@@ -1,0 +1,12 @@
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+/.quarto/
+/_manuscript
+/trackchanges.sty
+.Rproj.user
+.Rhistory
+.Rdata
+.httr-oauth
+.DS_Store
+STYLE.md
+**/*.quarto_ipynb

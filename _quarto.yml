@@ -1,0 +1,29 @@
+# quarto render          -> renders index.qmd only
+# quarto render simulations/<file>.qmd  -> re-renders a simulation study
+#   (results are cached in .rds files, so this is fast unless a replication
+#    constant is raised)
+
+project:
+  title: "Johansson2026fwer"
+  render:
+    - index.qmd
+
+execute:
+  echo: false
+  warning: false
+  message: false
+
+format:
+  preprint-typst:
+    number-sections: true
+    citeproc: true
+    csl: apa.csl
+    fig-format: png
+    fig-dpi: 300
+
+  # Uncomment for an HTML version. 
+  # html:
+  #   html-math-method: katex
+  #   toc: true
+  #   number-sections: true
+  #   csl: apa.csl
