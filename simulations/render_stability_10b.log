@@ -1,0 +1,22 @@
+[31m
+
+processing file: infit_decision_stability.qmd
+[39m1/21                
+2/21 [setup]        
+3/21                
+4/21 [runner]       
+5/21                
+6/21 [arms]         
+7/21                
+8/21 [run]          
+[31mError in `gzfile()`:
+! cannot open the connection
+Backtrace:
+    x
+ 1. \-global run_resumable(...)
+ 2.   \-base::saveRDS(acc, res_file)
+ 3.     \-base::gzfile(file, mode)
+[39m[31m
+Quitting from infit_decision_stability.qmd:130-215 [run]
+[39m[31mExecution halted
+[39m[33mWARN: Error encountered when rendering files[39m

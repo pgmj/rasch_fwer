@@ -30,6 +30,29 @@ load_phq9_arm <- function() {
   list(obs = obs, thr = thr, locs = locs, sd = sd_est)
 }
 
+# ---- checkpoint writing ------------------------------------------------------
+# Write to a temporary file in the same directory, then rename it into place.
+# The rename is atomic, so a write that is interrupted or blocked can never
+# leave a truncated cache behind, and it is far less likely to collide with a
+# cloud-sync client holding the target file open. These folders live under
+# OneDrive, where a plain saveRDS() of a large cache intermittently fails with
+# "cannot open the connection", so the write is also retried with a backoff.
+save_checkpoint <- function(obj, path, tries = 5) {
+  for (i in seq_len(tries)) {
+    tmp <- paste0(path, ".tmp", Sys.getpid())
+    ok <- tryCatch({
+      saveRDS(obj, tmp)
+      file.rename(tmp, path)
+    }, error = function(e) FALSE, warning = function(w) FALSE)
+    if (isTRUE(ok)) return(invisible(TRUE))
+    unlink(tmp)
+    Sys.sleep(2 * i)
+  }
+  stop("run_resumable(): could not write the checkpoint to ", path,
+       " after ", tries, " attempts. The previous checkpoint is intact.",
+       call. = FALSE)
+}
+
 # ---- resumable simulation runner --------------------------------------------
 # Cells already present in the cached grid (keyed on `keys`) are skipped, so
 # raising a replication constant and re-rendering computes only the new cells.
@@ -68,7 +91,7 @@ run_resumable <- function(res_file, grid, keys, fn,
     acc$grid <- rbind(acc$grid, grid[idx, , drop = FALSE])
     acc$elapsed_min <- acc$elapsed_min + as.numeric(Sys.time() - t0, "mins")
     acc <- utils::modifyList(acc, extra)
-    saveRDS(acc, res_file)
+    save_checkpoint(acc, res_file)
     message("  checkpoint ", nrow(acc$grid), " / ", nrow(grid),
             "  (", round(acc$elapsed_min, 1), " min)")
   }

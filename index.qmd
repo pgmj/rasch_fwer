@@ -174,7 +174,7 @@ In the first five studies, all five interval widths ($w$ = .90, .95, .99, .995, 
 | Interval convergence | 20 dichotomous | none | 0 | 150 to 1000 | 100 to 10 000 | 30 |
 | Error rates over $(w, B)$ | 20 dichotomous | .15 | 0, 1, 3 | 150 to 1000 | 100 to 2000 | 250 |
 | Realistic misfit | 15 polytomous, 9 phq9 | .75, .85, .90 | 0 to 3 | 150 to 1000 | 100, 400, 2000 | 120 |
-| Decision stability | 15 polytomous, 9 phq9 | .15, .50, .85 | 0 or all | 250, 1000 | 100 to 2000 | 6 datasets x 25 seeds |
+| Decision stability | 15 polytomous, 9 phq9 | .15, .50, .85 | 0 or all | 250, 1000 | 100 to 2000 | 10 datasets x 25 seeds |
 | Mechanism check | 9 phq9 | random responses | 1, 2 | 250, 1000 | 100, 400, 2000 | 120 |
 | Infit versus outfit | 20 dichotomous, 9 phq9 | .60, .85 | 0, 1 | 250, 600 | 1000 | 250 |
 | Short scale | 5 polytomous | .75 | 0, 1 | 250, 600 | 100, 400, 2000 | 1000 / 250 |
@@ -624,7 +624,7 @@ det6 |>
 
 # Decision stability
 
-The previous sections report error rates averaged over many simulated datasets. An analyst has one dataset. Because the cutoff interval and the p-values are computed from a finite simulation, two analysts who run identical analyses on the same data with different random seeds can reach different conclusions. This section quantifies how often that happens. Six datasets per condition were held fixed and each was analyzed with 25 different bootstrap seeds. Since the data are fixed, the observed infit values are fixed, and only the simulated reference distribution varies between seeds. For each item and dataset, the flag rate $p$ is the proportion of the 25 seeds in which the item was flagged. An item is counted as unstable when $0 < p < 1$, meaning the flagging decision depends on the seed. Two further quantities follow from $p$. The probability that two independently seeded analyses disagree about a given item is $2p(1 - p)$, and the probability that they disagree about at least one item in the scale is $1 - \prod_i \left(1 - 2p_i(1 - p_i)\right)$.
+The previous sections report error rates averaged over many simulated datasets. An analyst has one dataset. Because the cutoff interval and the p-values are computed from a finite simulation, two analysts who run identical analyses on the same data with different random seeds can reach different conclusions. This section quantifies how often that happens. Ten datasets per condition were held fixed and each was analyzed with 25 different bootstrap seeds. Since the data are fixed, the observed infit values are fixed, and only the simulated reference distribution varies between seeds. For each item and dataset, the flag rate $p$ is the proportion of the 25 seeds in which the item was flagged. An item is counted as unstable when $0 < p < 1$, meaning the flagging decision depends on the seed. Two further quantities follow from $p$. The probability that two independently seeded analyses disagree about a given item is $2p(1 - p)$, and the probability that they disagree about at least one item in the scale is $1 - \prod_i \left(1 - 2p_i(1 - p_i)\right)$.
 
 ```{r stab-prep}
 #| include: false
@@ -695,7 +695,7 @@ unst <- rates |>
 Under the null conditions, flagging with the Westfall-Young p-value is essentially reproducible. Pooled across both item sets and sample sizes, `r sprintf("%.1f", pool0$pct[pool0$B == 100])`% of items had a seed-dependent flag at $B$ = 100, and none from $B$ = 400 upward. At realistic misfit ($\rho$ = .85), pooled the same way, `r pf("FWER p-value", 400)`% of items were unstable at $B$ = 400 and `r pf("FWER p-value", 2000)`% at $B$ = 2000, with a Monte Carlo standard error of about `r sprintf("%.0f", max(se400, se2000))` percentage point. The interval rule at $w$ = .999 was consistently less stable, with `r pf("Interval, w = .999", 400)`% unstable items at $B$ = 400 and `r pf("Interval, w = .999", 2000)`% at $B$ = 2000. The two-analyst disagreement probability shows that more iterations keep helping beyond the point where error rates have converged. Pooled at realistic misfit, the probability that two seeds disagree about at least one item was `r dv["100"]`% at $B$ = 100, `r dv["400"]`% at $B$ = 400, `r dv["1000"]`% at $B$ = 1000, and `r dv["2000"]`% at $B$ = 2000. In other words, $B$ = 400 is where the error rates are trustworthy, but reproducibility keeps improving well past it.
 
 ```{r fig-stability}
-#| fig-cap: "Percentage of items whose flagging decision depends on the bootstrap seed (25 seeds per dataset, 6 datasets per condition), by number of iterations, misfit severity, decision rule, item set, and sample size. Lower values of the inter-dimensional correlation mean stronger misfit. Per-condition values carry Monte Carlo standard errors of 1 to 3 percentage points and are tabulated in the Appendix."
+#| fig-cap: "Percentage of items whose flagging decision depends on the bootstrap seed (25 seeds per dataset, 10 datasets per condition), by number of iterations, misfit severity, decision rule, item set, and sample size. Lower values of the inter-dimensional correlation mean stronger misfit. Per-condition values carry Monte Carlo standard errors of up to about 3 percentage points and are tabulated in the Appendix."
 #| fig-width: 8
 #| fig-height: 4.5
 unst |>
@@ -1070,29 +1070,69 @@ io5 <- P7 |>
 ai <- s_cal$anchor$infit[abs(s_cal$anchor$rho - 0.85) < 1e-9]
 cal_se <- sd(ai, na.rm = TRUE) / sqrt(sum(!is.na(ai)))
 
+# two-analyst disagreement: cluster-bootstrap SE per iteration count, plus the
+# paired SE of the B = 400 versus 2000 decline, which is the contrast the
+# iteration recommendation rests on and is far tighter than the marginals.
+set.seed(5)
+Dcl <- rate_p |>
+  filter(rho == 0.85, k > 0) |>
+  mutate(d = 2 * p * (1 - p)) |>
+  summarise(D = 1 - prod(1 - d), .by = c(arm, n, B, dataset)) |>
+  mutate(cl = paste(arm, n, dataset))
+dcls <- unique(Dcl$cl)
+dis_se <- vapply(sort(unique(Dcl$B)), function(B_) {
+  x <- Dcl[Dcl$B == B_, ]
+  100 * sd(replicate(300, mean(vapply(sample(dcls, replace = TRUE),
+                                      function(cc) x$D[x$cl == cc], numeric(1)))))
+}, numeric(1))
+dwide <- Dcl |>
+  select(cl, B, D) |>
+  pivot_wider(names_from = B, values_from = D, names_prefix = "B")
+dpair <- 100 * (dwide$B400 - dwide$B2000)
+dpair_se <- sd(dpair) / sqrt(length(dpair))
+
+# per-condition stability at the calibrated misfit level (FWER rule), and its
+# dataset-cluster bootstrap SE. Computed rather than hardcoded, so raising the
+# number of datasets cannot leave a stale range behind.
+set.seed(3)
+pc85 <- p85f |> summarise(pct = 100 * mean(p > 0 & p < 1), .by = c(arm, n, B))
+pc_se <- p85f |>
+  split(~ arm + n + B, drop = TRUE) |>
+  vapply(function(g) {
+    cls <- unique(g$cl)
+    sd(replicate(300, {
+      y <- do.call(rbind, lapply(sample(cls, replace = TRUE),
+                                 function(cc) g[g$cl == cc, ]))
+      100 * mean(y$p > 0 & y$p < 1)
+    }))
+  }, numeric(1))
+rng2 <- function(v) sprintf("%.1f to %.1f", min(v), max(v))
+
 mcse <- data.frame(
   Study = c("Interval convergence", "Error rates over (w, B)",
             "Realistic misfit", "Decision stability (pooled)",
-            "Decision stability (per condition)", "Mechanism check",
+            "Decision stability (per condition)",
+            "Decision stability (disagreement)", "Mechanism check",
             "Infit versus outfit", "Short scale", "Calibration"),
-  Replications = c("30", "250", "120", "6 x 25 seeds", "6 x 25 seeds",
-                   "120", "250", "250", "60"),
+  Replications = c("30", "250", "120", "10 x 25 seeds", "10 x 25 seeds",
+                   "10 x 25 seeds", "120", "250", "250", "60"),
   Quantity = c("Relative interval width", "Familywise error rate",
                "Detection gain, FWER vs interval",
                "Unstable items (%)", "Unstable items (%)",
-               "False positive contrast", "Detection gap, infit vs outfit",
+               "Two-analyst disagreement (%)", "False positive contrast", "Detection gap, infit vs outfit",
                "False positive gap, BH vs WY", "Mean infit of misfitting item"),
   Estimate = c(sprintf("%.3f", cv_est), ".05 (nominal)",
                sprintf("%.1f to %.1f", min(gains$gain), max(gains$gain)),
                sprintf("%s to %s", pf("FWER p-value", 2000),
                        pf("FWER p-value", 400)),
-               "1 to 7", sprintf("%.1f", mech_contrast),
+               rng2(pc85$pct), rng2(dis$pct),
+               sprintf("%.1f", mech_contrast),
                sprintf("%.1f to %.1f", min(io_gain$gain), max(io_gain$gain)),
                sprintf("%.1f to %.1f", min(io5$gap), max(io5$gap)),
                sprintf("%.2f", mean(ai, na.rm = TRUE))),
   SE = c(sprintf("%.3f", sd(cv_bs)), sprintf("%.3f", sqrt(.05 * .95 / 250)),
          sprintf("%.1f to %.1f", min(gains$se), max(gains$se)),
-         sprintf("%.1f", max(se400, se2000)), "1 to 3",
+         sprintf("%.1f", max(se400, se2000)), rng2(pc_se), rng2(dis_se),
          sprintf("%.1f", mech_se),
          sprintf("%.1f to %.1f", min(io_gain$se), max(io_gain$se)),
          sprintf("%.1f to %.1f", min(io5$se), max(io5$se)),
@@ -1101,7 +1141,7 @@ mcse <- data.frame(
 knitr::kable(mcse)
 ```
 
-*Note.* Convergence: cluster bootstrap over replications, worst case shown ($w$ = .999, $B$ = 2000, $n$ = 250). Error rates: binomial SE at the stated proportion with 250 replications. Realistic misfit: paired per-replication SE of the detection gain of the FWER p-value over the interval rule, range over the ten conditions at the calibrated misfit level. Stability: dataset-cluster bootstrap of the pooled and per-condition unstable-item percentages at the calibrated misfit level. Mechanism: SE of the false positive contrast between misfit mechanisms. Infit versus outfit: paired per-replication SE of the detection gap between the two statistics, range over the eight conditions. Short scale: paired per-replication SE of the false positive gap between Benjamini-Hochberg and Westfall-Young at five items, range over the two sample sizes. Calibration: SE of the mean infit at the calibrated level.
+*Note.* Convergence: cluster bootstrap over replications, worst case shown ($w$ = .999, $B$ = 2000, $n$ = 250). Error rates: binomial SE at the stated proportion with 250 replications. Realistic misfit: paired per-replication SE of the detection gain of the FWER p-value over the interval rule, range over the ten conditions at the calibrated misfit level. Stability: dataset-cluster bootstrap of the pooled and per-condition unstable-item percentages at the calibrated misfit level. Disagreement: the same bootstrap applied to the probability that two seeds disagree about at least one item, range over the four iteration counts. That marginal standard error overstates the uncertainty of the comparison between iteration counts, which is paired within dataset: the decline from B = 400 to B = 2000 is `r sprintf('%.1f', mean(dpair))` points with a standard error of `r sprintf('%.1f', dpair_se)`. Mechanism: SE of the false positive contrast between misfit mechanisms. Infit versus outfit: paired per-replication SE of the detection gap between the two statistics, range over the eight conditions. Short scale: paired per-replication SE of the false positive gap between Benjamini-Hochberg and Westfall-Young at five items, range over the two sample sizes. Calibration: SE of the mean infit at the calibrated level.
 
 ## Decision stability by condition
 
@@ -1119,4 +1159,4 @@ knitr::kable(unst_all, digits = 1,
                            "B = 100", "B = 400", "B = 1000", "B = 2000"))
 ```
 
-*Note.* Percentage of items with a seed-dependent flag across 25 bootstrap seeds (6 datasets per condition). Values carry Monte Carlo standard errors of roughly 1 to 3 percentage points, see the section above.
+*Note.* Percentage of items with a seed-dependent flag across 25 bootstrap seeds (10 datasets per condition). Values carry Monte Carlo standard errors of roughly 1 to 3 percentage points, see the section above.
