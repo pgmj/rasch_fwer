@@ -20,6 +20,27 @@ format:
     csl: apa.csl
     fig-format: png
     fig-dpi: 300
+    # Multiplier on the 0.65em base leading. The template default is 10/13,
+    # i.e. tighter than single spacing.
+    linestretch: 1.15
+    # Paragraph spacing. The template defaults this to a fixed 0.6em, which does
+    # NOT scale with linestretch, so raising linestretch alone leaves the first
+    # line of each paragraph sitting closer to the previous line than ordinary
+    # lines are to each other. Keep this equal to linestretch * 0.65em.
+    spacing: 0.7475em
+    # Link and reference colour. `colorlinks` + `include-in-header` show rules
+    # do NOT work with this extension: the template applies its own
+    # `show link:` / `show ref:` rules inside preprint(), and a later show rule
+    # wins in Typst, so anything set in the header is overwritten. Use the
+    # template's own parameters instead. "rgb(0, 0, 255)"
+    #   linkcolor  URLs, and citations once they are links (default: blue)
+    #   citecolor  cross-references such as @tbl-design (default: none) 
+    linkcolor: "blue"
+    citecolor: "blue"
+    # citeproc renders citations as plain text, so they are not links and cannot
+    # be coloured at all until this makes them internal links to the reference
+    # list. Required for linkcolor to reach citations.
+    link-citations: true
 
   # Uncomment for an HTML version. 
   # html:

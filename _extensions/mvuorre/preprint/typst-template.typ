@@ -437,7 +437,11 @@
       /* Abstract and metadata section */
       block(inset: (bottom: if toc { 0em } else { 2em }, left: 2.4em, right: 2.4em))[
         #set text(size: 0.92em)
-        #set par(first-line-indent: 0em)
+        // LOCAL MODIFICATION (not upstream): was `first-line-indent: 0em`,
+        // which hard-coded a flush-left abstract regardless of the document
+        // setting. Inheriting the document convention instead indents the
+        // second and later abstract paragraphs, matching the body text.
+        #set par(first-line-indent: (amount: first-line-indent, all: all))
         #if abstract != none {
           if abstract-title != none {
             block()[#text(weight: "semibold")[#abstract-title] #h(1em) #abstract]
