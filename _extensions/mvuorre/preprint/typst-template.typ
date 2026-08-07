@@ -205,9 +205,12 @@
     header-ascent: 50%,
     header: context {
       if (counter(page).get().at(0) > 1) [
+        // Three columns with equal outer widths, so the middle one is centred
+        // on the page. The middle is wide enough that a running head of normal
+        // length does not wrap.
         #grid(
-          columns: (1fr, 1fr),
-          align(left)[#running-head], align(right)[#counter(page).display(pagenumbering)],
+          columns: (1fr, 3fr, 1fr),
+          [], align(center)[#running-head], align(right)[#counter(page).display(pagenumbering)],
         )
       ]
     },

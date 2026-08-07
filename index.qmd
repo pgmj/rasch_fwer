@@ -1,5 +1,5 @@
 ---
-title: "Simulation-based cutoffs for conditional item fit in Rasch models: iterations, interval width, and multiplicity"
+title: "Simulation-based cutoffs for conditional item fit in Rasch models: iterations, multiplicity correction, and decision stability"
 author:
   - name: Magnus Johansson
     affiliations:
@@ -14,6 +14,7 @@ keywords:
   - Cutoffs
   - Critical values
   - Multiple comparisons
+  - Reproducibility
 abstract: |
   Simulation-based cutoff values for conditional item fit can be estimated by
   parametric bootstrapping and reported as an interval of a chosen width.
@@ -40,7 +41,8 @@ abstract: |
   module `easyRasch2jmv`.
 date: today
 bibliography: references.bib
-shorttitle: "Simulation-based cutoffs: iterations, width, and multiplicity"
+# the preprint template reads `running-head`; `shorttitle` is not mapped
+running-head: "SIMULATION-BASED CUTOFFS FOR ITEM FIT"
 license: "CC BY"
 funding: "The author received no specific funding for this work."
 editor_options:
@@ -81,7 +83,7 @@ s_cal   <- readRDS("simulations/calibration_rho_infit.rds")           # rho-to-i
 
 # Introduction
 
-Psychometric analysis often relies on rule-of-thumb critical values for interpreting item fit metrics, with recommended ranges that vary between sources and lack support from simulation studies. Johansson [-@johansson_detecting_2025] argued that such values should be replaced with simulation-based (parametric bootstrap) cutoffs tailored to the sample and items at hand, and evaluated this approach for conditional item infit [@muller_item_2020] through a series of simulation studies using the `easyRasch` R package [@easyrasch2024]. Infit with simulation-based cutoffs outperformed the item-restscore method [@kreiner_note_2011] with samples below 500 respondents, and the paper provided practical guidance on sample sizes, iterative item removal, and the number of bootstrap iterations. The present paper builds on that work and corrects parts of it.
+Psychometric analysis often relies on rule-of-thumb critical values for interpreting fit metrics, but no fixed value or range can generalize across analyses, because the distribution of a fit statistic under a correctly fitting model depends on features of the data and the model, such as the sample size and the number of items [@muller_item_2020;@mcneish_direct_2024]. Johansson [-@johansson_detecting_2025] argued that such values should be replaced with simulation-based (parametric bootstrap) cutoffs tailored to the sample and items at hand, and evaluated this approach for conditional item infit [@muller_item_2020] through a series of simulation studies using the `easyRasch` R package [@easyrasch2024]. Infit with simulation-based cutoffs outperformed the item-restscore method [@kreiner_note_2011] with samples below 500 respondents, and the paper provided practical guidance on sample sizes, iterative item removal, and the number of bootstrap iterations. The present paper builds on that work and corrects parts of it.
 
 The earlier iteration guidance recommended 100 bootstrap iterations for samples up to 250 respondents and 200 to 400 iterations for larger samples. The guidance was based on detection rates, since fewer iterations appeared to detect more misfitting items with smaller samples. This paper shows that the apparent advantage was an artifact. With few iterations the cutoff interval is estimated from too little information, becomes narrower than its nominal width, and flags fitting items at an inflated rate. Detection was in effect bought with false positives. The false positive rates reported in the earlier paper were calculated per item, while the probability of at least one false flag across all items in a scale, the familywise error rate, was not examined. In addition, the guidance conditioned the number of iterations on sample size, while the convergence of the cutoff interval turns out to depend on the interval width alone.
 
