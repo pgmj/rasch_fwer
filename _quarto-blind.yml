@@ -1,0 +1,16 @@
+# Profile for the anonymous manuscript sent to peer review.
+#
+#   quarto render index.qmd --to apaquarto-docx --profile blind
+#
+# Applies on top of _quarto.yml. Three things change:
+#   1. the title page is suppressed, so the author block does not appear;
+#   2. the software self-citations are replaced with "Masked Citation";
+#   3. `mask` is also read by index.qmd's setup chunk, which withholds the
+#      repository URL in the Reproducibility section.
+#
+
+suppress-title-page: true
+
+mask: true
+#masked-citations:
+

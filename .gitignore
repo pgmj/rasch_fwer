@@ -10,3 +10,9 @@
 .DS_Store
 STYLE.md
 **/*.quarto_ipynb
+/paper/
+apa_processed.docx
+/_freeze/
+/tests/
+example.qmd
+*copy*.qmd

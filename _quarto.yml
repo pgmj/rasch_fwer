@@ -7,6 +7,27 @@ project:
   title: "Johansson2026fwer"
   render:
     - index.qmd
+    # Listed so it inherits the shared author metadata below. It declares its
+    # own apaquarto-docx format, so it does not add a second preprint PDF.
+    - titlepage.qmd
+
+# Running head. Two keys because the two templates read different ones:
+# mvuorre/preprint reads `running-head` and prints it verbatim, apaquarto reads
+# `shorttitle` and upper-cases it itself. Without `shorttitle`, apaquarto falls
+# back to the full title, which is far too long for a running head.
+running-head: "SIMULATION-BASED CUTOFFS FOR ITEM FIT"
+shorttitle: "Simulation-based cutoffs for item fit"
+
+# Shared author metadata. Kept here rather than in index.qmd so the manuscript
+# and titlepage.qmd inherit one definition and cannot disagree about the
+# affiliation or contact details.
+author:
+  - name: Magnus Johansson
+    affiliations:
+      - name: Centre for Psychiatry Research, Department of Clinical Neuroscience, Karolinska Institutet, Stockholm, Sweden
+    orcid: 0000-0003-1669-592X
+    email: pgmj@pm.me
+    corresponding: true
 
 execute:
   echo: false
@@ -41,6 +62,22 @@ format:
     # be coloured at all until this makes them internal links to the reference
     # list. Required for linkcolor to reach citations.
     link-citations: true
+
+  # Word output for journal submission. Both formats are declared, so a plain
+  # `quarto render` builds both; use --to to pick one:
+  #   quarto render index.qmd --to preprint-typst                  (preprint PDF)
+  #   quarto render index.qmd --to apaquarto-docx --profile blind  (anonymous docx)
+  apaquarto-docx:
+    number-sections: false
+    # Quarto's docx default is 96 dpi. apaquarto scales every figure to the
+    # 6.5in APA text width, so a plot authored at 8.5in lands at ~125 dpi
+    # without this.
+    fig-dpi: 300
+    # Styles the *Note.* paragraphs as apaquarto FigureNote. See notes.lua for
+    # why this is a filter rather than a custom-style div in the source.
+    filters:
+      - notes.lua
+    floatsintext: true
 
   # Uncomment for an HTML version. 
   # html:
