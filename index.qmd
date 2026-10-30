@@ -8,30 +8,31 @@ keywords:
   - Critical values
   - Multiple comparisons
   - Reproducibility
-abstract: |
+# Folded scalar on purpose: apaquarto needs the abstract as inlines, and a
+# "|" block scalar leaves the docx abstract silently empty. One paragraph.
+abstract: >-
   Simulation-based cutoff values for conditional item fit can be estimated by
   parametric bootstrapping and reported as an interval of a chosen width.
-  Johansson (2025) recommended this over rule-of-thumb critical values and gave
-  iteration guidance based on detection rates and conditioned on sample size,
-  without an account of the error rate that the interval width controls. This
-  paper re-examines iterations and width against the familywise error rate
-  (FWER), and compares FWER and false discovery rate control. Seven simulation
-  studies vary item count and the targeting of misfitting items, with both
-  dichotomous and polytomous conditions.
-
-  The interval width is shown to be the error rate parameter of the procedure,
-  setting the FWER jointly with the number of items. Bootstrap p-values with a
-  Westfall-Young FWER correction target that error rate directly, detect more
-  misfit than a width-matched interval, and are calibrated from 400 iterations,
-  with fewer false positives than Benjamini-Hochberg. Outfit was consistently
-  less powerful than infit, confirming earlier dichotomous findings and
-  extending them to polytomous items. 
-  
-  Updated recommendations include flagging items on the Westfall-Young FWER
+  Johansson (2025) recommended this over rule-of-thumb critical values but gave
+  iteration guidance without accounting for the error rate that the interval
+  width controls. This paper re-examines iterations and width against the
+  familywise error rate (FWER), and compares FWER and false discovery rate
+  control, in seven simulation studies with dichotomous and polytomous items.
+  The interval width is shown to set the FWER of the interval rule jointly with
+  the number of items. Bootstrap p-values with a Westfall-Young step-down target
+  that error rate directly and detect more misfit than a width-matched interval.
+  When all items fit, their FWER was at or slightly below the nominal level from
+  400 iterations, and the small excess at fewer iterations came from how the
+  statistics are studentized. Holm performed similarly once iterations cleared
+  its floor, which grows with the number of items, while Benjamini-Hochberg
+  flagged more fitting items. When some items misfit, every procedure exceeded
+  its nominal rate at large samples, because misfit contaminates the total score
+  that conditional fit is computed on. Conditional outfit was less powerful than
+  infit throughout. Recommendations include flagging items on the Westfall-Young
   corrected p-value, using at least 400 iterations and 1000 to 2000 for a final
-  analysis, and reporting the interval as a descriptive band at width .95. The
-  described methods are available in the R package `easyRasch2` and the jamovi
-  module `easyRasch2jmv`.
+  analysis, reporting the interval as a descriptive band at width .95, and
+  removing items one at a time. The methods are available in the R package
+  `easyRasch2` and the jamovi module `easyRasch2jmv`.
 date: today
 bibliography: references.bib
 license: "CC BY"
@@ -64,9 +65,12 @@ suppressMessages({
 })
 
 # Cached simulation results. See simulations/ for the code that produced them.
-s_conv  <- readRDS("simulations/infit_width_iterations_S1.rds")       # interval convergence
-s_grid  <- readRDS("simulations/infit_width_iterations_S2.rds")       # (w, B) grid, dichotomous
-s_poly  <- readRDS("simulations/infit_width_iterations_poly_weak.rds") # realistic misfit, polytomous
+# Studies 1 and 2 come from the fresh-data rerun of the revision (rev1/), which
+# replaced the master-dataset caches simulations/infit_width_iterations_S1/S2.rds
+fresh   <- load_fresh_dich("rev1")
+s_conv  <- fresh$conv                                                 # interval convergence
+s_grid  <- fresh$grid                                                 # (w, B) grid, dichotomous
+s_poly  <- readRDS("simulations/infit_width_iterations_poly_weak.rds") # PHQ-9-anchored misfit, polytomous
 s_stab  <- readRDS("simulations/infit_decision_stability.rds")        # stability under reseeding
 s_mech  <- readRDS("simulations/infit_misfit_mechanism.rds")          # mechanism check (rule comparisons)
 s_stat  <- readRDS("simulations/infit_outfit.rds")                    # infit versus outfit
@@ -90,15 +94,15 @@ Psychometric analysis often relies on rule-of-thumb critical values for interpre
 
 The iteration guidance in Johansson [-@johansson_detecting_2025] recommended 100 bootstrap iterations for samples up to 250 respondents and 200 to 400 iterations for larger samples. That guidance was based on detection rates, since fewer iterations appeared to detect more misfit items with smaller samples. This paper shows that the apparent advantage was an artifact. With few iterations the cutoff interval is estimated from too little information, becomes narrower than its nominal width, and flags fitting items at an inflated rate. Detection was in effect bought with false positives. The false positive rates reported in the earlier paper were calculated per item, while the probability of at least one false flag across all items in a scale, the familywise error rate (FWER), was not examined. In addition, the guidance conditioned the number of iterations on sample size, while the convergence of the cutoff interval turns out to depend on the interval width alone.
 
-Three contributions follow. First, the interval width and the number of iterations must be chosen jointly. The width sets the FWER of the interval decision rule, and the number of iterations determines whether the nominal width is attained at all. Second, the same bootstrap supports p-values with multiplicity corrections. The Westfall-Young step-down [@westfall_resampling_1993] controls the FWER, detects more misfit than the interval rule at matched error rates, and needs far fewer iterations. The Benjamini-Hochberg procedure [@benjamini_controlling_1995], which controls the false discovery rate instead, is included for comparison and comes with an iteration floor that grows with the number of comparisons. Third, the paper introduces decision stability as an outcome in its own right: whether re-running the same analysis on the same data with a different random seed produces the same set of flagged items.
+Three contributions follow. First, the interval width and the number of iterations must be chosen jointly. The width sets the FWER of the interval decision rule, and the number of iterations determines whether the nominal width is attained at all. Second, the same bootstrap supports p-values with multiplicity corrections. The Westfall-Young step-down [@westfall_resampling_1993] targets the FWER directly and controls it when all items fit, detects more misfit than the interval rule at matched error rates, and needs far fewer iterations than the interval rule or the Holm procedure. The Benjamini-Hochberg procedure [@benjamini_controlling_1995], which controls the false discovery rate instead, is included for comparison and comes with an iteration floor that grows with the number of comparisons. Third, the paper introduces decision stability as an outcome in its own right: whether re-running the same analysis on the same data with a different random seed produces the same set of flagged items.
 
-Results are presented using two simple performance metrics, detection rate and false positive rate, with decision stability added as a third. Readers interested in the statistical foundations of the multiple testing methods are referred to Westfall and Young [-@westfall_resampling_1993] and to the more recent paper by Ferreira [-@ferreiraMethodsTestingSmall2024]. All analyses use conditional item fit as implemented in the `iarm` R package [@mueller_iarm_2022], accessed through `easyRasch2` [@johanssonEasyRasch2PsychometricAnalysis2026]. The reasons to avoid unconditional item fit statistics, which is implemented in most other software, are detailed in Müller [-@muller_item_2020].
+Results are presented using two simple performance metrics, detection rate and false positive rate, with decision stability added as a third. Readers interested in the statistical foundations of the multiple testing methods are referred to Westfall and Young [-@westfall_resampling_1993] and to the more recent paper by Ferreira [-@ferreiraMethodsTestingSmall2024]. All analyses use conditional item fit as implemented in the `iarm` R package [@mueller_iarm_2022], accessed through `easyRasch2` [@johanssonEasyRasch2PsychometricAnalysis2026]. The bootstrap is parametric throughout. Datasets are simulated from the Rasch model fitted to the observed data, and the model is refitted to every simulated dataset, so the item parameters are re-estimated in each bootstrap sample. The next section defines the procedure in full. The reasons to avoid unconditional item fit statistics, which is implemented in most other software, are detailed in Müller [-@muller_item_2020].
 
 The paper proceeds as follows. The next section describes three properties of the bootstrap procedure that together motivate the simulation studies. The Method section describes the simulation design. Three results sections then cover interval convergence and error rates, the comparison between interval-based and p-value-based decisions, and decision stability. The Discussion summarizes the findings as practical recommendations.
 
 # The interval, its width, and the number of iterations
 
-The procedure under study uses parametric bootstrapping to establish critical values for conditional item infit [@muller_item_2020]. Item and person parameters are estimated from the observed data and used to simulate $B$ new datasets that fit the Rasch model. Conditional infit is calculated for every item in every simulated dataset, which yields an empirical null distribution of $B$ values per item. The procedure was evaluated in Johansson [-@johansson_detecting_2025] using the `easyRasch` package. Its successor `easyRasch2` [@johanssonEasyRasch2PsychometricAnalysis2026], which is used throughout this paper, summarizes each item's null distribution with a highest density interval of width $w$, and an observed infit value outside the interval flags the item as misfitting. This section describes three properties of that procedure which together motivate the simulation studies. Readers who prefer to see the consequences before the mechanics can skim the equations and return after the results sections.
+The procedure under study uses a parametric bootstrap to establish critical values for conditional item infit [@muller_item_2020]. Item thresholds are estimated from the observed data by conditional maximum likelihood, and person locations by weighted likelihood [@warm_weighted_1989]. Each of $B$ simulated datasets then draws $n$ person locations with replacement from the estimated ones and generates responses under the Rasch model, or the partial credit model for polytomous items [@masters_rasch_1982], with the estimated thresholds. Every simulated dataset therefore fits the model by construction. The model is refitted to each simulated dataset by conditional maximum likelihood, so the item parameters are re-estimated in every bootstrap sample as they are in the analysis of the observed data, and conditional infit is computed from that refit. This yields an empirical null distribution of $B$ values per item, against which the observed infit of each item is compared. The procedure was evaluated in Johansson [-@johansson_detecting_2025] using the `easyRasch` package. Its successor `easyRasch2` [@johanssonEasyRasch2PsychometricAnalysis2026], which is used throughout this paper, summarizes each item's null distribution with a highest density interval of width $w$, and an observed infit value outside the interval flags the item as misfitting. This section describes three properties of that procedure which together motivate the simulation studies. Readers who prefer to see the consequences before the mechanics can skim the equations and return after the results sections.
 
 ## Draws per tail
 
@@ -127,7 +131,7 @@ the FWER of the interval rule [@sidak_rectangular_1967]. The width is thus not a
 
 ## Bootstrap p-values and multiplicity corrections
 
-The same $B$ simulated values support a different decision rule. Let $F_i$ denote the observed infit of item $i$ and $F^*_{ib}$ the simulated values. Each is studentized by the simulation mean and standard deviation, $t_i = (F_i - \bar{F}^*_i)/s^*_i$, which puts items with different locations on a common scale, since the expected infit range varies with item location relative to the sample [@muller_item_2020]. The marginal Monte Carlo p-value is
+The same $B$ simulated values support a different decision rule. Let $F_i$ denote the observed infit of item $i$ and $F^*_{ib}$ the simulated values. Each is studentized by the simulation mean and standard deviation, $t_i = (F_i - \bar{F}^*_i)/s^*_i$, which puts items with different locations on a common scale, since the expected infit range varies with item location relative to the sample [@muller_item_2020]. This follows Ferreira [-@ferreiraMethodsTestingSmall2024, Section 4], who standardizes each statistic by its mean and variance under the null so that the maximum across comparisons treats them on an equal footing. In his permutation setting those moments are known and are the same for the observed and the permuted statistics. Here they are estimated from the simulated values, a difference the next paragraphs return to. The marginal Monte Carlo p-value is
 
 $$
 p_i = \frac{1 + \sum_{b=1}^{B} I\left(|t^*_{ib}| \geq |t_i|\right)}{B + 1},
@@ -135,7 +139,11 @@ $$ {#eq-pmarg}
 
 where $I(\cdot)$ equals 1 when its argument is true and 0 otherwise.
 
-This p-value is valid at any $B$, and its smallest attainable value is $1/(B+1)$. It controls the error rate of a single pre-specified comparison. Scanning all $k$ items inflates the familywise error toward the levels in @eq-fwer, which is the argument for correcting it, not for abandoning p-values.
+Its smallest attainable value is $1/(B+1)$, which sets the resolution of the test. When the observed statistic and the simulated ones are exchangeable under the null, as the observed and permuted statistics of a permutation test are, a p-value of this form is valid at any $B$ [@dufour_monte_2006, Proposition 2.2]. Two features of the procedure prevent that here, and the simulations measure the consequences of both.
+
+First, the null hypothesis is composite. Item thresholds and person locations are estimated from the observed data, and the simulated datasets are drawn from the fitted model rather than from the model that generated the data. Dufour [-@dufour_monte_2006, Section 6] calls a test of this kind, with the nuisance parameters replaced by a point estimate, a local Monte Carlo test, and shows that it is valid asymptotically under regularity conditions rather than at a given sample size. The procedure therefore belongs to the bootstrap methods that Ferreira [-@ferreiraMethodsTestingSmall2024, Section 5] describes as controlling error rates approximately, with an accuracy at finite sample sizes that depends on the data and has to be checked rather than assumed. Validity at a given sample size would require removing the nuisance parameters, either by maximizing the Monte Carlo p-value over them [@dufour_monte_2006] or, for dichotomous items, by conditioning on the sufficient statistics and sampling response matrices with the observed margins [@verhelst_efficient_2008]. Neither is studied here. Second, the observed statistic is studentized by moments that it did not contribute to, while each simulated statistic is studentized by moments that include it. The observed statistic therefore varies slightly more about those moments than the simulated ones do, and the test is slightly liberal, by an amount that shrinks as $1/B$. Studentizing all $B + 1$ values by a mean and standard deviation computed over the observed and simulated values together removes this asymmetry, because the observed dataset is then treated as one of $B + 1$ datasets on equal terms. This joint studentization is the Monte Carlo counterpart of Ferreira's standardization by moments that the observed and resampled statistics share. The error-rate study evaluates both versions on the same simulated values.
+
+Either way, the marginal p-value controls the error rate of a single pre-specified comparison. Scanning all $k$ items inflates the familywise error toward the levels in @eq-fwer, which is the argument for correcting it, not for abandoning p-values.
 
 The Westfall-Young step-down corrects for multiplicity using the joint distribution that the bootstrap already provides [@westfall_resampling_1993; @ferreiraMethodsTestingSmall2024]. The most extreme observed statistic is compared against the distribution of the maximum across all items,
 
@@ -143,7 +151,7 @@ $$
 \tilde{p}_{(1)} = \frac{1 + \sum_{b=1}^{B} I\left(\max_i |t^*_{ib}| \geq |t_{(1)}|\right)}{B + 1},
 $$ {#eq-wy}
 
-after which the maximum is recomputed over the remaining items for the next statistic, with monotonicity enforced. Because the maximum is taken over the actual dependence structure, this is more powerful than Bonferroni-type corrections at the same FWER. Its validity rests on the subset pivotality condition [@westfall_resampling_1993]. Only $B \geq 1/\alpha$ iterations, that is 20 at $\alpha = .05$, are needed for a rejection to be possible at all.
+after which the maximum is recomputed over the remaining items for the next statistic, with monotonicity enforced. Only $B \geq 1/\alpha$ iterations, that is 20 at $\alpha = .05$, are needed for a rejection to be possible at all. Ferreira [-@ferreiraMethodsTestingSmall2024, Section 3] derives the step-down as a shortcut to the closure principle, which is valid under the subset pivotality condition of Westfall and Young [-@westfall_resampling_1993]: for every set of true hypotheses, the joint distribution of their statistics must be the same whether or not the remaining hypotheses are true. The bootstrap draws every simulated dataset from a model in which all items fit, so its reference distribution is that of the complete null by construction. Whether the observed statistics of fitting items follow it when other items misfit is a separate question. Ferreira's Example 2, a set of tests of pairwise correlations computed from the same variables, shows that the condition fails when the statistics share data in this way, and every conditional fit statistic shares the total score it is conditioned on. The step-down can therefore be expected to control the FWER when all items fit, which is weak control, but not necessarily when some items misfit.
 
 The Benjamini-Hochberg procedure [@benjamini_controlling_1995] instead controls the false discovery rate, the expected proportion of flagged items that are in fact fitting. When a single item stands out, its adjusted p-value is bounded below by $m/(B+1)$ for $m$ comparisons, so it cannot be flagged unless
 
@@ -151,9 +159,11 @@ $$
 B \geq \frac{m}{\alpha}.
 $$ {#eq-bhfloor}
 
-More generally, when $s$ comparisons have p-values at the Monte Carlo floor of @eq-pmarg, the smallest attainable adjusted p-value is $m/(s(B+1))$, so several clearly misfitting items lower the required $B$. Both floors follow from requiring the smallest attainable adjusted p-value to fall strictly below $\alpha$. With 20 items and $\alpha = .05$, a single misfitting item cannot be flagged unless $B \geq 400$. Ferreira [-@ferreiraMethodsTestingSmall2024] gives a self-contained account of these methods aimed at the range of 5 to 50 hypotheses, which corresponds to the range encountered in item-level analysis.
+More generally, when $s$ comparisons have p-values at the Monte Carlo floor of @eq-pmarg, the smallest attainable adjusted p-value is $m/(s(B+1))$, so several clearly misfitting items lower the required $B$. Both floors follow from requiring the smallest attainable adjusted p-value to fall strictly below $\alpha$. With 20 items and $\alpha = .05$, a single misfitting item cannot be flagged unless $B \geq 400$.
 
-In summary, three decision rules can be computed from one bootstrap. The interval rule has its error rate set by $w$ and needs a large $B$ for extreme widths. The Westfall-Young p-value controls the familywise error rate (FWER) at any practical $B$. The Benjamini-Hochberg p-value controls the false discovery rate but has a reachability floor that grows with the number of comparisons. The simulation studies quantify how these properties play out in realistic conditions.
+The Holm procedure [@holm_simple_1979] is the familiar FWER alternative that uses the marginal p-values alone. It controls the FWER under general conditions, needs no pivotality condition, and among procedures based on the marginal p-values alone little improvement on it is possible [@ferreiraMethodsTestingSmall2024, Section 2]. Procedures that use the joint distribution of the statistics, such as the step-down above, can be more powerful when the statistics are dependent, but the gain is small when they are close to independent, and the agreement with @eq-fwer reported below suggests that item fit statistics are close to independent. With Monte Carlo p-values Holm also has a reachability floor. Its smallest adjusted p-value is $m/(B+1)$ for $m$ comparisons, the floor of @eq-bhfloor, and unlike that of Benjamini-Hochberg it is not lowered when several items stand out. Ferreira [-@ferreiraMethodsTestingSmall2024] gives a self-contained account of these methods aimed at the range of 5 to 50 hypotheses, which corresponds to the range encountered in item-level analysis.
+
+In summary, several decision rules can be computed from one bootstrap. The interval rule has its error rate set by $w$ and needs a large $B$ for extreme widths. The Westfall-Young p-value targets the FWER directly and can reject from 20 iterations. The Holm and Benjamini-Hochberg p-values control the FWER and the false discovery rate from the marginal p-values, and both have a reachability floor that grows with the number of comparisons. All of them inherit the approximate validity of the bootstrap they are computed from, and the simulation studies quantify how close each comes to its nominal error rate.
 
 # Method
 
@@ -170,19 +180,30 @@ m5 <- function(r) mean(s_cal5$grid$infit[abs(s_cal5$grid$rho - r) < 1e-9], na.rm
 p20 <- function(r) mean(s_cal$grid$infit[abs(s_cal$grid$rho - r) < 1e-9 &
                                          s_cal$grid$format == "polytomous"], na.rm = TRUE)
 ph85 <- function() mean(s_cal$anchor$infit[abs(s_cal$anchor$rho - 0.85) < 1e-9], na.rm = TRUE)
+# descriptives of the phq9 data behind the real item set
+ph_obs <- load_phq9_arm()$obs
+ph_tot <- rowSums(ph_obs)
+ph_zero <- sprintf("%.1f", 100 * mean(ph_tot == 0))
+ph_med <- sprintf("%.0f", median(ph_tot))
+ph_max <- 3 * ncol(ph_obs)
+ph_z <- function(it) sprintf("%.0f", 100 * mean(ph_obs[, it] == 0))
 ```
 
 ## Overview
 
-Seven simulation studies were conducted. @tbl-studies summarizes their designs. The first two use dichotomous items and answer how many iterations the cutoff interval needs at a given width, and what the error rates of the decision rules are across a grid of widths and iteration counts. The third moves to polytomous items with misfit calibrated against real data, where the decision rules are compared under realistic conditions. The fourth holds datasets fixed and varies only the bootstrap seed to measure decision stability. The fifth replaces the misfit mechanism as a robustness check, and is reported alongside the rule comparisons it checks. The sixth asks whether the decision rules transfer to conditional outfit, the second fit statistic the same bootstrap already produces. The seventh repeats the error-rate and rule comparisons on a five-item scale, below the range the other studies cover.
+Seven simulation studies were conducted, and @tbl-studies summarizes their designs. Each answers one question, and its design follows from that question.
 
-In the first five studies, all five interval widths ($w$ = .90, .95, .99, .995, and .999) are evaluated from the same simulated values. The first measures the interval itself and computes no decision rules; in the second to the fifth, all four rules are computed from the same bootstrap within each replication, so comparisons between rules are paired. The sixth study holds the rule fixed at the Westfall-Young p-value with $B$ = 1000 and varies the fit statistic instead. Both statistics are again read from the same bootstrap, so that comparison is paired in the same sense. The seventh returns to the full set of widths and rules.
+The first two use the 20 dichotomous items of Johansson [-@johansson_detecting_2025], so that the iteration guidance of that paper is re-examined on the item set it was derived from. The first asks how many iterations the cutoff interval needs at a given width. Convergence concerns the null distribution alone, so the study uses null data only, and it runs to $B$ = 10 000 to provide a reference width. The second asks what error rates the decision rules have across a grid of widths and iteration counts, which needs null conditions for the familywise error and misfit conditions for detection. Its misfit uses $\rho$ = .15, the strong misfit of the earlier paper, so that its detection results connect to that paper.
+
+The third moves to polytomous items with misfit severity anchored on the infit values of a real dataset, as described below, so that the decision rules are compared at a severity that analysts observe rather than at one chosen to be detectable. It uses two item sets, PHQ-9 item parameters for a real configuration and a stylised 15-item set for a regular one. The fourth holds datasets fixed and varies only the bootstrap seed, because decision stability concerns one dataset analyzed twice, which variation between datasets would obscure. It spans misfit from strong ($\rho$ = .15) to anchored ($\rho$ = .85), since stability depends on how many items lie near the decision threshold and that number varies with misfit severity. The fifth replaces multidimensionality with random responding at matched infit, to check whether two findings belong to the misfit mechanism rather than to misfit in general, and is reported alongside the rule comparisons it checks. The sixth asks whether the decision rules transfer to conditional outfit, the second fit statistic the same bootstrap already produces. It holds the rule and the number of iterations fixed at the recommended settings and varies only the statistic. The seventh repeats the error-rate and rule comparisons on a five-item scale, below the range the other studies cover, where @eq-fwer predicts the lowest error rates and the reachability floor of Benjamini-Hochberg no longer binds. Replication counts differ because the studies estimate different quantities with different precision, and the Monte Carlo error of each is reported in @tbl-mcse.
+
+In the first five studies, all five interval widths ($w$ = .90, .95, .99, .995, and .999) are evaluated from the same simulated values. The first measures the interval itself and computes no decision rules; in the second to the fifth, all four rules are computed from the same bootstrap within each replication, so comparisons between rules are paired. In the two dichotomous studies each replication also runs a single bootstrap at the largest number of iterations, and every smaller $B$ is evaluated on its first $B$ draws, so comparisons between values of $B$ are paired within the bootstrap as well. The two studies share their null replications, from which the first reads the interval and the second the decision rules. The sixth study holds the rule fixed at the Westfall-Young p-value with $B$ = 1000 and varies the fit statistic instead. Both statistics are again read from the same bootstrap, so that comparison is paired in the same sense. The seventh returns to the full set of widths and rules.
 
 | Study | Items | $\rho$ | Misfitting items | $n$ | $B$ | Replications |
 |:-------------------|:-------------------|:------------|:-----------|:----------|:------------|:--------------|
-| Interval convergence | 20 dichotomous | none | 0 | 150 to 1000 | 100 to 10 000 | 30 |
-| Error rates over $(w, B)$ | 20 dichotomous | .15 | 0, 1, 3 | 150 to 1000 | 100 to 2000 | 250 |
-| Realistic misfit | 15 polytomous, 9 phq9 | .75, .85, .90 | 0 to 3 | 150 to 1000 | 100, 400, 2000 | 120 |
+| Interval convergence | 20 dichotomous | none | 0 | 150 to 1000 | 100 to 10 000 | 500 |
+| Error rates over $(w, B)$ | 20 dichotomous | .15 | 0, 1, 3 | 150 to 1000 | 100 to 10 000 | 500 / 250 |
+| PHQ-9-anchored misfit | 15 polytomous, 9 phq9 | .75, .85, .90 | 0 to 3 | 150 to 1000 | 100, 400, 2000 | 120 |
 | Decision stability | 15 polytomous, 9 phq9 | .15, .50, .85 | 0 or all | 250, 1000 | 100 to 2000 | 10 datasets x 25 seeds |
 | Mechanism check | 9 phq9 | random responses | 1, 2 | 250, 1000 | 100, 400, 2000 | 120 |
 | Infit versus outfit | 20 dichotomous, 9 phq9 | .60, .85 | 0, 1 | 250, 600 | 1000 | 250 |
@@ -190,7 +211,7 @@ In the first five studies, all five interval widths ($w$ = .90, .95, .99, .995, 
 
 : Overview of the simulation studies {#tbl-studies}
 
-*Note.* Misfitting item counts are 1 and 3 for the 20-item and 15-item sets and 1 and 2 for the 9-item set, with 0 denoting the null condition used for error rates. The $n$ = 150 condition is included for the 9-item set only. In the sixth study the two correlations belong to the two item sets in the order listed, chosen so that both inject comparable infit, and its single misfitting item is run as two separate conditions, once near the person mean and once off target. The seventh study uses 1000 replications for its null conditions, which carry the error-rate claim, and 250 for its misfit conditions.
+*Note.* Misfitting item counts are 1 and 3 for the 20-item and 15-item sets and 1 and 2 for the 9-item set, with 0 denoting the null condition used for error rates. The $n$ = 150 condition is included for the 9-item set only. In the sixth study the two correlations belong to the two item sets in the order listed, chosen so that both inject comparable infit, and its single misfitting item is run as two separate conditions, once near the person mean and once off target. The first two studies share their null replications, 500 per sample size, which run to $B$ = 10 000. The misfit conditions of the second study run to $B$ = 2000 with 250 replications each. The seventh study uses 1000 replications for its null conditions, which carry the error-rate claim, and 250 for its misfit conditions.
 
 ## Data generation
 
@@ -198,15 +219,15 @@ Misfit is induced by multidimensionality, as in Johansson [-@johansson_detecting
 
 The mechanism check replaces multidimensionality with random responding, in which a fixed proportion of the responses to the target items is replaced by a uniform draw over the response categories. That proportion was set so that a single target item has the same expected infit as in the multidimensional condition, which puts the two mechanisms on equal footing at matched misfit severity.
 
-The dichotomous item set replicates the design of the earlier paper: 20 items with locations drawn uniformly between -2 and 2 logits, person locations with a standard deviation of 1.5, and response data generated with the `eRm` package [@mair_extended_2007]. Misfitting items are those located nearest 0, -1, and -2 logits relative to the person mean, so that targeting varies. Samples are drawn from master datasets of 10 000 simulated respondents. The sixth study reuses this item set but generates each replication independently rather than sampling from a master dataset, and contrasts two single-item conditions, one misfitting the item nearest the person mean at 0.04 logits and one misfitting the most off-target item at 1.82 logits. This mirrors the q5 and q8 contrast in the phq9 set (see below).
+The dichotomous item set replicates the design of the earlier paper: 20 items with locations drawn uniformly between -2 and 2 logits, person locations with a standard deviation of 1.5, and response data generated with the `eRm` package [@mair_extended_2007]. Misfitting items are those located nearest 0, -1, and -2 logits relative to the person mean, so that targeting varies. Johansson [-@johansson_detecting_2025] drew every sample from one master dataset of 10 000 simulated respondents per condition. Here every replication of every study generates its respondents anew, so replications are independent and no chance feature of one master dataset is shared by all the replications of a condition. The sixth study reuses this item set and contrasts two single-item conditions, one misfitting the item nearest the person mean at 0.04 logits and one misfitting the most off-target item at 1.82 logits. This mirrors the q5 and q8 contrast in the PHQ-9 set (see below).
 
-The polytomous item sets use four ordered response categories. The stylised set has 15 items with locations evenly spaced between -2 and 2 logits and item thresholds spread one logit around each location, again with person standard deviation 1.5. The second set takes its item parameters from the phq9 dataset included in `easyRasch2`, nine depression screening items with four response categories answered by 600 respondents. Thresholds were estimated with conditional maximum likelihood and the latent standard deviation of 1.39 was estimated from the same data. This set represents realistic item properties rather than stylised ones. Its misfitting items were designated to be q5, located near the person mean, and q8, the most off-target item at 1.4 logits above the mean, so that targeting again varies.
+The polytomous item sets use four ordered response categories. The stylised set has 15 items with locations evenly spaced between -2 and 2 logits and item thresholds spread one logit around each location, again with person standard deviation 1.5. The second set takes its item parameters from the phq9 dataset included in `easyRasch2`, nine depression screening items with four response categories answered by 600 respondents. The data are a subsample of the National Health and Nutrition Examination Survey [@cdc_nhanes_2024] in which respondents with all-zero responses were randomly thinned, to avoid the zero-inflated response pattern of the full survey data. In the resulting data `r ph_zero`% of respondents have a total score of 0 and the median total score is `r ph_med` of `r ph_max`, so the sample leans toward the upper half of the scale. Zero responses are concentrated in two items, q8 (`r ph_z(8)`%) and q9 (`r ph_z(9)`%), the items located furthest above the person mean. The configuration is therefore unusual in having two off-target items rather than in having a floor effect, and the stylised 15-item set provides a regular configuration for comparison. Thresholds were estimated with conditional maximum likelihood and the latent standard deviation of 1.39 was estimated from the same data. This set represents the item properties of a real instrument rather than stylised ones. Its misfitting items were designated to be q5, located near the person mean, and q8, the most off-target item at 1.4 logits above the mean, so that targeting again varies.
 
 ## Calibrating misfit severity
 
 Misfit severity is reported and calibrated on the infit scale rather than on $\rho$, for two reasons. First, the same $\rho$ produces very different infit depending on item format. @tbl-calibration shows that at identical item locations and person distributions, polytomous items yield roughly 2.8 times the infit excess of dichotomous items, because more response categories carry more information per item. The $\rho$ = .15 used in the earlier paper was chosen to represent a clearly misfitting dichotomous item. Carried unchanged into polytomous items it would produce infit values beyond what real data show. Second, infit is the scale on which analysts observe misfit, so calibrating on it connects the simulation conditions to practice.
 
-The same non-portability holds across item counts. A separate scan on the five-item set used in the short-scale study gives a mean injected infit of `r sprintf("%.2f", m5(0.85))` at $\rho$ = .85, against `r sprintf('%.2f', p20(0.85))` for the same $\rho$ on the twenty-item polytomous set built to the same recipe, with the nine phq9 items falling between at `r sprintf('%.2f', ph85())`. Reaching the realistic range at five items requires $\rho$ = .75, which gives `r sprintf("%.2f", m5(0.75))`. A short scale needs stronger misfit to show the same infit, because the misfitting item is a larger share of the total score that the statistic is conditioned on and therefore attenuates its own value more. Anchoring on infit rather than on $\rho$ keeps the conditions comparable across item counts as well as formats.  We remind readers that infit is strongly dependent on sample size [@muller_item_2020] and traditional rule-of-thumb thresholds should be avoided when interpreting infit values.
+The same non-portability holds across item counts. A separate scan on the five-item set used in the short-scale study gives a mean injected infit of `r sprintf("%.2f", m5(0.85))` at $\rho$ = .85, against `r sprintf('%.2f', p20(0.85))` for the same $\rho$ on the twenty-item polytomous set built to the same recipe, with the nine phq9 items falling between at `r sprintf('%.2f', ph85())`. Reaching the anchored range at five items requires $\rho$ = .75, which gives `r sprintf("%.2f", m5(0.75))`. A short scale needs stronger misfit to show the same infit, because the misfitting item is a larger share of the total score that the statistic is conditioned on and therefore attenuates its own value more. Anchoring on infit rather than on $\rho$ keeps the conditions comparable across item counts as well as formats.  We remind readers that infit is strongly dependent on sample size [@muller_item_2020] and traditional rule-of-thumb thresholds should be avoided when interpreting infit values.
 
 ```{r tbl-calibration}
 #| tbl-cap: "Conditional infit by item format and inter-dimensional correlation"
@@ -222,7 +243,9 @@ knitr::kable(cal, digits = 2,
 
 *Note.* Mean conditional infit of a single misfitting item under identical conditions (20 items, identical locations, $n$ = 500, 60 replications). The excess ratio is the polytomous infit excess over 1.0 divided by the dichotomous excess.
 
-The realistic misfit level is anchored against the phq9 dataset with $n$ = 600. Analyzing the observed responses with simulation-based cutoffs ($B$ = 1000) and Westfall-Young corrected p-values flags three underfitting items, q3 at `r rf["q3"]`, q8 at `r rf["q8"]`, and q9 at `r rf["q9"]`, along with two overfitting items at `r rf["q2"]` and `r rf["q4"]`. A calibration scan on the phq9 item parameters shows that $\rho$ = .85 and .90 together reproduce this range, with mean infit values of `r av[2]` and `r av[3]` for a single misfitting item, close to the strongest and the mildest flagged real items. The level .75 gives `r av[1]`, slightly beyond the worst real item. The stability study additionally includes $\rho$ = .15 and .50 to span the range from the strong misfit used in the earlier paper down to realistic levels.
+The misfit level used for the rule comparisons, referred to below as the PHQ-9-anchored or anchored level, is set against the phq9 dataset with $n$ = 600. Analyzing the observed responses with simulation-based cutoffs ($B$ = 1000) and Westfall-Young corrected p-values flags three underfitting items, q3 at `r rf["q3"]`, q8 at `r rf["q8"]`, and q9 at `r rf["q9"]`, along with two overfitting items at `r rf["q2"]` and `r rf["q4"]`. A calibration scan on the phq9 item parameters shows that $\rho$ = .85 and .90 together reproduce this range, with mean infit values of `r av[2]` and `r av[3]` for a single misfitting item, close to the strongest and the mildest flagged real items. The level .75 gives `r av[1]`, slightly beyond the worst real item. The stability study additionally includes $\rho$ = .15 and .50 to span the range from the strong misfit used in the earlier paper down to the anchored level.
+
+Matching mean conditional infit places a misfitting item at the same observed severity on the statistic that analysts see, which is why it was chosen. It does not equate the alternative distributions, the contamination of the conditioning score or the difficulty of detection, and the mechanism check reported below shows that conditions with the same mean infit can produce very different false positive rates. The anchored level is therefore one empirically observed severity, under multidimensionality, and not a representative sample of the misfit that analysts encounter.
 
 ## Decision rules and performance metrics
 
@@ -232,7 +255,7 @@ Three performance metrics are reported. The detection rate is the percentage of 
 
 ## Software and execution
 
-All simulations were run in R 4.6.1 using `easyRasch2` [@johanssonEasyRasch2PsychometricAnalysis2026], which computes conditional item fit through the `iarm` package [@mueller_iarm_2022] and estimates item parameters with conditional maximum likelihood. Results were produced under `easyRasch2` versions 1.1.0 and 1.1.1. The two are identical in everything the simulations use, apart from the `statistic` argument added in 1.1.1 that the infit-versus-outfit study requires, so 1.1.1 reproduces all of them. Every combination of replication and iteration count uses an independent bootstrap, and no simulated values are reused across $B$ conditions. Seeds are deterministic functions of the design cell, so any cell can be reproduced in isolation. Simulation code and cached results are available in the repository accompanying this paper, as described in the Reproducibility section.
+All simulations were run in R 4.6.1 using `easyRasch2` [@johanssonEasyRasch2PsychometricAnalysis2026], which computes conditional item fit through the `iarm` package [@mueller_iarm_2022] and estimates item parameters with conditional maximum likelihood. Results were produced under `easyRasch2` versions 1.1.0 and 1.1.1, and the two dichotomous studies under version 1.4.0. The versions are identical in everything the simulations use, apart from the `statistic` argument added in 1.1.1 that the infit-versus-outfit study requires. As a check, a cell of the original dichotomous study rebuilt under 1.4.0 reproduced its p-values and interval flags to the last digit. In the polytomous studies every combination of replication and iteration count uses an independent bootstrap. In the two dichotomous studies the values of $B$ are nested within one bootstrap per replication, as described above. Seeds are deterministic functions of the design cell, so any cell can be reproduced in isolation. Simulation code and cached results are available in the repository accompanying this paper, as described in the Reproducibility section.
 
 # Interval convergence and error rates
 
@@ -349,8 +372,9 @@ ART <- bind_part(s_grid, "hdci", c("rep", "k", "n")) |>
   summarise(det = 100 * mean(code[is_mis] > 0),
             fp = 100 * mean(code[!is_mis] > 0), .by = c(n, B)) |>
   arrange(n, B)
-aq <- function(n_, col) paste(sprintf("%.0f", ART[[col]][ART$n == n_]),
-                              collapse = ", ")
+aq <- function(n_, col, dp = 0) paste(sprintf(paste0("%.", dp, "f"),
+                                              ART[[col]][ART$n == n_]),
+                                      collapse = ", ")
 fw999 <- fwe |> filter(arm == "20 dichotomous", abs(w - 0.999) < 1e-9)
 
 # single misfitting item, same item set: detection is at ceiling throughout
@@ -364,26 +388,28 @@ This section reports the two studies that use dichotomous items, together with t
 
 ## How many iterations the interval needs
 
-@fig-convergence shows the median interval width at each number of iterations, expressed relative to the width obtained with 10 000 iterations, the reference width. Two results follow. First, the required number of iterations depends on the width and not on the sample size. Lines for the same width overlap almost exactly across the four sample sizes, with a largest discrepancy of `r sprintf("%.3f", n_spread)` at any combination of width and iterations. Convergence is a property of the simulated null distribution and its tails, and the sample size affects where that distribution sits rather than how many values are needed to describe its extremes.
+@fig-convergence shows the median interval width at each number of iterations, expressed relative to the width obtained from all 10 000 iterations of the same bootstrap, the reference width. Two results follow. First, the required number of iterations depends on the width and not on the sample size. Lines for the same width overlap almost exactly across the four sample sizes, with a largest discrepancy of `r sprintf("%.3f", n_spread)` at any combination of width and iterations. Convergence is a property of the simulated null distribution and its tails, and the sample size affects where that distribution sits rather than how many values are needed to describe its extremes.
 
 ```{r fig-convergence}
 #| fig-cap: "Convergence of the cutoff interval"
 #| fig-width: 7
 #| fig-height: 4
 relw |>
-  mutate(n = factor(n)) |> 
-  ggplot(aes(B, rel, colour = factor(w), group = interaction(w, n))) +
-  geom_hline(yintercept = 1, linewidth = 0.5, colour = "grey60", linetype = 2) +
-  geom_line(alpha = 0.8) +
-  geom_point(size = 0.96, aes(shape = n)) +
+  mutate(w = factor(sprintf("%.3f", w)), n = factor(n)) |>
+  ggplot(aes(B, rel, colour = w, linetype = w, shape = w,
+             group = interaction(w, n))) +
+  geom_hline(yintercept = 1, linewidth = 0.4, colour = "grey70") +
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 1.6) +
   scale_x_log10(breaks = c(100, 400, 1000, 2000, 5000, 10000),
                 labels = c("100", "400", "1000", "2000", "5000", "10 000")) +
+  scale_bw("Interval width", colours = pal_ramp5) +
   labs(x = "Bootstrap iterations (B), log scale",
-       y = "Width relative to B = 10 000", colour = "Interval width") +
+       y = "Width relative to B = 10 000") +
   theme_paper(11)
 ```
 
-*Note.* Median cutoff interval width at each number of iterations, relative to the width at 10 000 iterations, for four sample sizes and five interval widths. Each line is one combination of width and sample size. Lines of the same colour overlap, showing that convergence does not depend on sample size. Values below 1 indicate an interval narrower than its nominal width.
+*Note.* Median cutoff interval width at each number of iterations, relative to the width at 10 000 iterations of the same bootstrap, for four sample sizes and five interval widths. Each line is one combination of width and sample size, with the width shown by line type and point shape. Lines of the same width overlap, showing that convergence does not depend on sample size. Values below 1 indicate an interval narrower than its nominal width.
 
 Second, the number of iterations required grows sharply as the interval widens. Taking 99% of that reference width as a criterion, `r bq(0.95)` iterations suffice for $w$ = .95, `r bq(0.99)` for $w$ = .99, and `r bq(0.999)` for $w$ = .999. The reference is empirical rather than asymptotic: at $w$ = .999 it has only five draws per tail itself, so the shortfall reported for that width is if anything understated. At 100 iterations the .999 interval reaches only `r rw(0.999, 100)` of that reference, that is roughly a quarter too narrow, while the .95 interval is already within `r short(0.95, 100)` percent. This is the pattern that @tbl-drawspertail predicts. Widths near 1 place their endpoints far into the tails of the simulated distribution, where few or no simulated values fall, so the interval collapses toward the range of the simulation.
 
@@ -402,25 +428,28 @@ fwe |>
                                       "20 dichotomous"),
                       labels = c("9 phq9 items", "15 polytomous items",
                                       "20 dichotomous items"))) |>
-  ggplot(aes(factor(B), obs, colour = factor(w), group = factor(w))) +
-  geom_hline(aes(yintercept = pred, colour = factor(w)),
-             linetype = 2, linewidth = 0.3) +
-  geom_line() +
-  geom_point(size = 1) +
-  facet_wrap(~arm) +
+  mutate(w = factor(sprintf("%.3f", w))) |>
+  ggplot(aes(factor(B), obs, colour = w, linetype = w, shape = w, group = w)) +
+  geom_hline(aes(yintercept = pred), colour = "grey65",
+             linetype = "dotted", linewidth = 0.4) +
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 1.6) +
+  facet_wrap(~arm, scales = "free_x") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  scale_bw("Interval width", colours = pal_ramp5) +
   labs(x = "Bootstrap iterations (B)",
-       y = "Familywise false positives (%)", colour = "Interval width") +
+       y = "Familywise false positives (%)") +
   theme_paper(12) +
   scale_y_continuous(limits = c(0,100))
 ```
 
-*Note.* Rates under the null conditions, by interval width and number of iterations, for the three item sets. Dashed horizontal lines are the predictions of @eq-fwer. Observed rates approach the prediction as the interval converges, and exceed it when too few iterations leave the interval narrower than its nominal width.
+*Note.* Rates under the null conditions, by interval width and number of iterations, for the three item sets. Dotted grey horizontal lines are the predictions of @eq-fwer, one for each width. Observed rates approach the prediction as the interval converges, and exceed it when too few iterations leave the interval narrower than its nominal width.
 
 Where the interval has not converged, the observed rates lie above the prediction, and by a wide margin at the narrowest widths. For the 20 dichotomous items at $w$ = .999, whose nominal familywise error rate is `r pq("20 dichotomous", 0.999)`%, the observed rate was `r fq("20 dichotomous", 0.999, 100)`% at 100 iterations and `r fq("20 dichotomous", 0.999, 400)`% at 400. Even at 2000 iterations it remained `r fq("20 dichotomous", 0.999, 2000)`%, which is consistent with the interval still being `r short(0.999, 2000, 1)` percent narrower than the reference at that point. The two studies thus tell one story from two directions. A small shortfall in interval width translates into a large excess in familywise error, because the error rate is governed by the extreme tails that the shortfall affects.
 
 ## The detection and false positive trade-off across iterations
 
-The recommendation of 100 to 400 iterations in Johansson [-@johansson_detecting_2025] rested on the observation that detection rates were highest with the fewest iterations. The present results show the same trade-off and explain its source. With three misfitting items among 20 dichotomous items at $n$ = 150, detection across 100, 200, 400, 1000, and 2000 iterations was `r aq(150, "det")`%, a decline of the same magnitude as the one reported in the earlier paper. The false positive rate on the fitting items in the same conditions was `r aq(150, "fp")`%, and the familywise false positive rate under the null fell from `r fq("20 dichotomous", 0.999, 100)`% to `r fq("20 dichotomous", 0.999, 2000)`% over the same range. The decline in detection appears only where detection is not already at ceiling. With a single misfitting item in the same item set, detection stayed above `r sprintf("%.0f", min(k1det$det))`% at every number of iterations, and only the false positive rate responded.
+The recommendation of 100 to 400 iterations in Johansson [-@johansson_detecting_2025] rested on the observation that detection rates were highest with the fewest iterations. The present results show the same trade-off and explain its source. With three misfitting items among 20 dichotomous items at $n$ = 150, detection across 100, 200, 400, 1000, and 2000 iterations was `r aq(150, "det")`%, a decline of the same magnitude as the one reported in the earlier paper. The false positive rate on the fitting items in the same conditions was `r aq(150, "fp", 1)`%, and the familywise false positive rate under the null fell from `r fq("20 dichotomous", 0.999, 100)`% to `r fq("20 dichotomous", 0.999, 2000)`% over the same range. The decline in detection appears only where detection is not already at ceiling. With a single misfitting item in the same item set, detection stayed at or above `r sprintf("%.1f", min(k1det$det))`% at every number of iterations, and only the false positive rate responded.
 
 Detection and false positives therefore decline together, and for the same reason. Fewer iterations produce a narrower interval, a narrower interval flags more items, and among the flagged items are both misfitting and fitting ones. The apparent advantage of few iterations was not greater sensitivity but a lower and undocumented threshold. Since the earlier paper evaluated false positives per item rather than across the scale, the cost was easy to overlook. A per-item rate of `r sprintf("%.0f", ART$fp[ART$n == 150 & ART$B == 100])`% at 100 iterations is unremarkable in isolation, while the corresponding probability of at least one false flag somewhere in a 20-item scale was `r fq("20 dichotomous", 0.999, 100)`%.
 
@@ -431,34 +460,75 @@ Detection and false positives therefore decline together, and for the same reaso
 al5 <- 0.05
 GP <- bind_part(s_grid, "pval", c("rep", "k", "n"))
 
-# null familywise error by rule and B, pooled over n (dichotomous, 20 items)
-null_rules <- GP |>
+# null familywise error by rule and B, pooled over n (dichotomous, 20 items).
+# Holm from the marginal p-values within each analysis. wyj = Westfall-Young
+# with the observed and simulated statistics studentized jointly over all
+# B + 1 values (computed in rev1/fresh_rerun.R from the same draws).
+G0p <- GP |>
   filter(k == 0) |>
-  mutate(unc = p_marg < al5, wy = padj_fwer < al5, bh = padj_bh < al5) |>
-  summarise(across(c(unc, wy, bh), any), .by = c(rep, n, B)) |>
-  summarise(across(c(unc, wy, bh), ~100 * mean(.x)), .by = B) |>
+  mutate(p_holm = p.adjust(p_marg, "holm"), .by = c(rep, n, B))
+null_any <- G0p |>
+  mutate(unc = p_marg < al5, holm = p_holm < al5, wy = padj_fwer < al5,
+         wyj = padj_fwer_pool < al5, bh = padj_bh < al5) |>
+  summarise(across(c(unc, holm, wy, wyj, bh), any), .by = c(rep, n, B))
+null_rules <- null_any |>
+  summarise(across(c(unc, holm, wy, wyj, bh), ~100 * mean(.x)), .by = B) |>
   arrange(B)
 
-# BH and WY detection by B for k = 1 and k = 3 at n = 150
+# paired standard-minus-joint Westfall-Young difference per B
+wyj_pair <- null_any |>
+  mutate(d = as.numeric(wy) - as.numeric(wyj)) |>
+  summarise(diff = 100 * mean(d), se = 100 * sd(d) / sqrt(n()), .by = B) |>
+  arrange(B)
+wjd <- function(B_, col = "diff") sprintf("%.1f", wyj_pair[[col]][wyj_pair$B == B_])
+wjd_max_from <- function(from) sprintf("%.1f",
+  max(abs(wyj_pair$diff[wyj_pair$B >= from])))
+
+# per-item rejection rate of the marginal test under the null, against the
+# largest size a valid Monte Carlo test can attain at that B
+item_rate <- G0p |>
+  summarise(rate = 100 * mean(p_marg < al5), .by = B) |>
+  mutate(attain = 100 * floor(al5 * (B + 1) - 1e-9) / (B + 1))
+ir_rng <- sprintf("%.1f to %.1f", min(item_rate$rate), max(item_rate$rate))
+
+# Westfall-Young null rate in the polytomous studies, pooled, from B = 400
+poly_wy0 <- bind_part(s_poly, "pval", c("arm", "rep", "k", "n", "rho")) |>
+  filter(k == 0) |>
+  summarise(any = any(padj_fwer < al5, na.rm = TRUE), .by = c(arm, rep, n, B)) |>
+  summarise(pct = 100 * mean(any), .by = B)
+pw_rng <- with(poly_wy0[poly_wy0$B >= 400, ],
+               sprintf("%.1f and %.1f", min(pct), max(pct)))
+nr <- function(col, B_) sprintf("%.1f", null_rules[[col]][null_rules$B == B_])
+nr_rng <- function(col, from) {
+  v <- null_rules[[col]][null_rules$B >= from]
+  sprintf("%.1f and %.1f", min(v), max(v))
+}
+n_null <- GP |> filter(k == 0) |> distinct(rep, n, B) |> count(B) |> pull(n) |> unique()
+stopifnot(length(n_null) == 1)
+
+# BH, Holm and WY detection by B for k = 1 and k = 3 at n = 150. Holm is
+# adjusted over all 20 items of each analysis before keeping the misfitting ones.
 seqs <- GP |>
   filter(k > 0, n == 150) |>
   mutate(is_mis = mapply(function(k, it) it %in% s_grid$misfit[seq_len(k)],
                          k, item)) |>
+  mutate(p_holm = p.adjust(p_marg, "holm"), .by = c(rep, k, n, B)) |>
   filter(is_mis) |>
   summarise(bh = 100 * mean(padj_bh < al5, na.rm = TRUE),
+            holm = 100 * mean(p_holm < al5, na.rm = TRUE),
             wy = 100 * mean(padj_fwer < al5, na.rm = TRUE), .by = c(k, B)) |>
   arrange(k, B)
 sq <- function(k_, rule_) paste(sprintf("%.0f", seqs[[rule_]][seqs$k == k_]),
                                 collapse = ", ")
 
-# realistic misfit: all four rules, both arms, rho = .85
+# anchored misfit level: all rules, both arms, rho = .85
 RH <- bind_part(s_poly, "hdci", c("arm", "rep", "k", "n", "rho")) |>
   filter(abs(rho - 0.85) < 1e-9, k > 0)
 RP <- bind_part(s_poly, "pval", c("arm", "rep", "k", "n", "rho")) |>
   filter(abs(rho - 0.85) < 1e-9, k > 0)
 mis5 <- function(a, k) s_poly$arms[[a]]$mis[seq_len(k)]
 
-r5 <- bind_rows(
+r5_all <- bind_rows(
   RH |> filter(abs(w - 0.999) < 1e-9) |>
     transmute(arm, rep, k, n, B, item, flag = as.integer(code > 0),
               rule = "Interval, w = .999"),
@@ -467,19 +537,43 @@ r5 <- bind_rows(
   RP |> transmute(arm, rep, k, n, B, item,
                   flag = as.integer(padj_fwer < al5), rule = "Westfall-Young"),
   RP |> transmute(arm, rep, k, n, B, item,
-                  flag = as.integer(padj_bh < al5), rule = "Benjamini-Hochberg")
+                  flag = as.integer(padj_bh < al5), rule = "Benjamini-Hochberg"),
+  # Holm from the marginal p-values, adjusted over all items of each analysis
+  RP |> mutate(p_holm = p.adjust(p_marg, "holm"), .by = c(arm, rep, k, n, B)) |>
+    transmute(arm, rep, k, n, B, item, flag = as.integer(p_holm < al5),
+              rule = "Holm")
 ) |>
   mutate(is_mis = mapply(function(a, k, it) it %in% mis5(a, k), arm, k, item),
          cond = factor(paste0(arm, ", n = ", n),
                        levels = c("phq9, n = 150", "phq9, n = 250",
                                   "phq9, n = 1000", "sim15, n = 250",
                                   "sim15, n = 1000")))
+# Figure 3 shows the four rules of the submission. Holm is reported in the text
+# and in the appendix table of decision rules.
+r5 <- r5_all |> filter(rule != "Holm")
 
 # pooled false positives at B = 2000 by rule
 fp2000 <- r5 |>
   filter(B == 2000, !is_mis) |>
   summarise(fp = 100 * mean(flag, na.rm = TRUE), .by = rule)
 fpv <- function(rule_) sprintf("%.1f", fp2000$fp[fp2000$rule == rule_])
+fp2000_h <- r5_all |>
+  filter(B == 2000, !is_mis, rule == "Holm") |>
+  summarise(fp = 100 * mean(flag, na.rm = TRUE)) |> pull(fp)
+
+# Holm against Westfall-Young at the anchored level: detection at B = 100,
+# and the paired detection difference at B = 2000
+holm100 <- r5_all |>
+  filter(B == 100, is_mis, rule == "Holm") |>
+  summarise(det = 100 * mean(flag)) |> pull(det)
+holm_gain <- r5_all |>
+  filter(B == 2000, is_mis, rule %in% c("Holm", "Westfall-Young")) |>
+  summarise(d = mean(flag), .by = c(arm, k, n, rep, rule)) |>
+  pivot_wider(names_from = rule, values_from = d) |>
+  mutate(diff = 100 * (`Westfall-Young` - Holm)) |>
+  summarise(gain = mean(diff), se = sd(diff) / sqrt(n()), .by = c(arm, k, n))
+hg_rng <- sprintf("%.1f and %.1f", min(holm_gain$gain), max(holm_gain$gain))
+hg_se <- sprintf("%.1f", max(holm_gain$se))
 
 # detection gain of WY over the interval at w = .999 and the matched w = .995,
 # phq9 arm, B = 2000, paired within replications
@@ -506,18 +600,22 @@ fwe995 <- 100 * mean(
 
 ## The four rules compared
 
-The p-value rules are first examined under the null conditions of the dichotomous study, where any flag is a false positive. @tbl-null-rules shows the familywise error rate by rule and number of iterations, pooled over the four sample sizes. Three patterns stand out. Scanning all 20 items with uncorrected marginal p-values produces a familywise error rate around 60% at every $B$, which is the expected consequence of testing 20 hypotheses at $\alpha$ = .05 and the reason a correction is needed. The Westfall-Young step-down is close to its nominal 5% throughout, mildly liberal at $B$ = 100 and stable from $B$ = 400. The near-zero Benjamini-Hochberg rates at $B$ = 100 and 200 are explained by the reachability floor of @eq-bhfloor: with 20 comparisons a single standout cannot be flagged below $B$ = 400. Flagging below that requires several items to sit at the Monte Carlo floor at once, which needs four of them at $B$ = 100 and two at $B$ = 200, and is rare enough under the null to leave the rate at 0.0% and 0.7%.
+The p-value rules are first examined under the null conditions of the dichotomous study, where any flag is a false positive. @tbl-null-rules shows the familywise error rate by rule and number of iterations, pooled over the four sample sizes. Three patterns stand out. Scanning all 20 items with uncorrected marginal p-values produces a familywise error rate around 60% at every $B$, which is the expected consequence of testing 20 hypotheses at $\alpha$ = .05 and the reason a correction is needed. The Westfall-Young step-down is mildly liberal at $B$ = 100, at `r nr('wy', 100)`%, falls to `r nr('wy', 200)`% at $B$ = 200, and from $B$ = 400 it is stable and slightly below its nominal 5%, between `r nr_rng('wy', 400)`% up to $B$ = 10 000. The near-zero Holm and Benjamini-Hochberg rates at $B$ = 100 and 200 are explained by the reachability floor of @eq-bhfloor: with 20 comparisons a single standout cannot be flagged below $B$ = 400. Benjamini-Hochberg can flag below that when several items sit at the Monte Carlo floor at once, which needs four of them at $B$ = 100 and two at $B$ = 200, and is rare enough under the null to leave its rate at `r nr('bh', 100)`% and `r nr('bh', 200)`%. Holm cannot, and flagged nothing. From $B$ = 400 Holm was between `r nr_rng('holm', 400)`% and Benjamini-Hochberg between `r nr_rng('bh', 400)`%.
 
 ```{r tbl-null-rules}
 #| tbl-cap: "Familywise error rate of the p-value decision rules"
 knitr::kable(null_rules, digits = 1,
-             col.names = c("B", "Uncorrected marginal", "Westfall-Young",
-                           "Benjamini-Hochberg"))
+             col.names = c("B", "Uncorrected", "Holm", "Westfall-Young",
+                           "WY, joint", "Benjamini-Hochberg"))
 ```
 
-*Note.* Percentages under the null conditions of the dichotomous study (20 items, no misfitting items), by number of bootstrap iterations. Pooled over the four sample sizes, 1000 datasets per cell.
+*Note.* Percentages under the null conditions of the dichotomous study (20 items, no misfitting items), by number of bootstrap iterations. Pooled over the four sample sizes, `r format(n_null, big.mark = ' ')` datasets per cell. Uncorrected is the marginal p-value of @eq-pmarg. WY, joint is the Westfall-Young step-down with the observed and simulated statistics studentized together over all $B + 1$ values, computed from the same bootstrap. All values of $B$ within a replication come from one bootstrap of 10 000 iterations.
 
-The reachability floor also shapes detection. With a single misfitting item at $n$ = 150, Benjamini-Hochberg detection across $B$ = 100 to 2000 was `r sq(1, "bh")`%, jumping exactly where $B$ crosses the floor of 400. With three misfitting items the sequence was `r sq(3, "bh")`%, with substantial detection already at $B$ = 200, because three p-values at the Monte Carlo floor lower the attainable adjusted p-value to $m/(3(B+1))$. The Westfall-Young rule was flat across the whole range at `r sq(1, "wy")`% and `r sq(3, "wy")`% respectively, since it needs only $B \geq 20$ to reject and its power does not depend on $B$ beyond that.
+The decline of the Westfall-Young rate between $B$ = 100 and 400 is the studentization effect described in the section on bootstrap p-values. With joint studentization the rate was between `r nr_rng('wyj', 100)`% at every $B$, $B$ = 100 included. Paired within replications, the standard version exceeded the joint one by `r wjd(100)` percentage points at $B$ = 100 (SE `r wjd(100, 'se')`), by `r wjd(400)` points at $B$ = 400 (SE `r wjd(400, 'se')`), and by at most `r wjd_max_from(1000)` points from $B$ = 1000. Joint studentization therefore removes the whole decline, and the excess at small $B$ is a property of how the statistics are studentized rather than of the step-down.
+
+What remains is a level slightly below the nominal 5% that does not change between $B$ = 400 and 10 000, under both versions. The per-item marginal tests show the same thing at their own level, flagging `r ir_rng`% of fitting items at every $B$, against the 5.0% that a valid Monte Carlo test can attain. An error that does not shrink as $B$ grows is not Monte Carlo error. It is the kind of finite-sample departure that Ferreira [-@ferreiraMethodsTestingSmall2024, Section 5] notes for bootstrap methods with estimated parameters, and here it is conservative. It was smaller in the polytomous studies, whose Westfall-Young rates under the null were between `r pw_rng`% from $B$ = 400.
+
+The reachability floor also shapes detection. With a single misfitting item at $n$ = 150, Benjamini-Hochberg detection across $B$ = 100 to 2000 was `r sq(1, "bh")`%, jumping exactly where $B$ crosses the floor of 400. With three misfitting items the sequence was `r sq(3, "bh")`%, with substantial detection already at $B$ = 200, because three p-values at the Monte Carlo floor lower the attainable adjusted p-value to $m/(3(B+1))$. Holm detected nothing below its floor in either condition (`r sq(1, "holm")`% and `r sq(3, "holm")`%), since several standouts do not lower it. The Westfall-Young rule was flat across the whole range at `r sq(1, "wy")`% and `r sq(3, "wy")`% respectively, since it needs only $B \geq 20$ to reject and its power does not depend on $B$ beyond that.
 
 ```{r fig-rules}
 #| fig-cap: "Detection and false positives for the four decision rules"
@@ -527,25 +625,32 @@ r5 |>
   mutate(metric = ifelse(is_mis, "Detection (%)", "False positives (%)")) |>
   summarise(pct = 100 * mean(flag, na.rm = TRUE),
             .by = c(rule, cond, B, metric)) |>
-  ggplot(aes(factor(B), pct, colour = rule, group = rule)) +
-  geom_line() +
-  geom_point(size = 1) +
+  mutate(rule = factor(rule, levels = c("Westfall-Young", "Benjamini-Hochberg",
+                                        "Interval, w = .999", "Marginal p"))) |>
+  ggplot(aes(factor(B), pct, colour = rule, linetype = rule, shape = rule,
+             group = rule)) +
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 1.8) +
   facet_grid(metric ~ cond, scales = "free_y") +
-  labs(x = "Bootstrap iterations (B)", y = NULL, colour = "Decision rule") +
+  scale_bw("Decision rule", colours = pal_rules) +
+  labs(x = "Bootstrap iterations (B)", y = NULL) +
   theme_paper(13) +
-  theme(legend.position = "bottom") +
-  scale_color_brewer(type = "qual", palette = "Dark2")
+  theme(legend.position = "bottom", legend.key.width = grid::unit(1.6, "cm")) +
+  guides(colour = guide_legend(nrow = 2), shape = guide_legend(nrow = 2),
+         linetype = guide_legend(nrow = 2))
 ```
 
-*Note.* Detection rate (misfitting items) and false positive rate (fitting items) at the calibrated misfit level, by number of iterations, item set, and sample size. Rates are averaged over the misfitting-item conditions. Note the different y-axis scales for the two rows.
+*Note.* Detection rate (misfitting items) and false positive rate (fitting items) at the anchored misfit level, by number of iterations, item set, and sample size. Rates are averaged over the misfitting-item conditions. Note the different y-axis scales for the two rows.
 
-@fig-rules compares all four rules at the calibrated misfit level. Against the interval at $w$ = .999 the Westfall-Young rule detects substantially more misfit, by `r rng(g999)` percentage points across the non-saturated nine-item conditions at $B$ = 2000, at a false positive rate of `r fpv("Westfall-Young")`% against `r fpv("Interval, w = .999")`% for the interval, pooled across arms, so it detects more at a higher cost. Part of this raw gain, however, reflects the interval's implicit error rate rather than the method. By @eq-fwer, $w$ = .999 corresponds to a familywise rate of only 0.9% for nine items, so the interval is operating far below the $\alpha$ = .05 of the p-value rules.
+@fig-rules compares all four rules at the anchored misfit level. Against the interval at $w$ = .999 the Westfall-Young rule detects substantially more misfit, by `r rng(g999)` percentage points across the non-saturated nine-item conditions at $B$ = 2000, at a false positive rate of `r fpv("Westfall-Young")`% against `r fpv("Interval, w = .999")`% for the interval, pooled across arms, so it detects more at a higher cost. Part of this raw gain, however, reflects the interval's implicit error rate rather than the method. By @eq-fwer, $w$ = .999 corresponds to a familywise rate of only 0.9% for nine items, so the interval is operating far below the $\alpha$ = .05 of the p-value rules.
 
 A fair comparison holds the error rate constant. For nine items, $w$ = .995 implies a familywise rate of 4.4% by @eq-fwer, and its observed null rate at $B$ = 2000 was `r sprintf("%.1f", fwe995)`%, closely matching the p-value rules. Against this matched interval the Westfall-Young rule still detected more misfit in every non-saturated condition, by `r rng(g995)` percentage points, with slightly fewer false positives. The remaining advantage comes from studentization and from using the joint distribution of the item statistics. More important than its size is what the matching exercise reveals: an interval width that matches a chosen $\alpha$ must be solved from @eq-fwer for each item count, and for most item counts no convenient width exists. The Westfall-Young rule targets $\alpha$ directly, whatever the number of items.
 
+Holm, computed from the same marginal p-values, is the second FWER procedure in the comparison, and @tbl-rules-appendix reports it by condition. At $B$ = 100 it detected `r sprintf("%.1f", holm100)`% of the misfitting items, since the floor of @eq-bhfloor is `r 9 / 0.05` iterations for nine items and `r 15 / 0.05` for fifteen. At $B$ = 2000 the Westfall-Young rule detected between `r hg_rng` percentage points more than Holm across conditions, paired within replications, with standard errors of up to `r hg_se` points, and the pooled false positive rates were `r fpv("Westfall-Young")`% against `r sprintf("%.1f", fp2000_h)`%. Using the joint distribution of the item statistics therefore adds little power here, as Ferreira's [-@ferreiraMethodsTestingSmall2024] account leads one to expect for statistics that are close to independent. The practical advantage of the step-down over Holm is that it needs no minimum number of iterations.
+
 A short scale tests Benjamini-Hochberg where the floor does not bind at all. At five items the floor is `r floor(5 / 0.05)` iterations, so the procedure operates freely at every $B$ examined, and the comparison is no longer handicapped by reachability. At $n$ = 250 it detected the misfitting item in `r bh5(250, "det_bh")`% of replications against `r bh5(250, "det_wy")`% for the Westfall-Young rule, with false positives of `r bh5(250, "fp_bh")`% against `r bh5(250, "fp_wy")`%. At $n$ = 600 both detected it in every replication, with false positives of `r bh5(600, "fp_bh")`% against `r bh5(600, "fp_wy")`%. Paired within replications, the detection difference was within one standard error of zero at both sample sizes while the false positive difference exceeded four. The preference for the Westfall-Young rule is therefore not an artifact of testing Benjamini-Hochberg only where its floor binds.
 
-Benjamini-Hochberg and Westfall-Young performed similarly with a single misfitting item, while with several misfitting items Benjamini-Hochberg detected somewhat more, as expected since the false discovery rate is a more permissive criterion when true effects are present. The price appears on the other side of the ledger, with pooled false positives of `r fpv("Benjamini-Hochberg")`% against `r fpv("Westfall-Young")`% at $B$ = 2000, roughly a doubling. The marginal p-value, finally, behaves exactly as @eq-pmarg predicts, well calibrated per item at any $B$ but unusable as a screening rule. Taken together, these results support the Westfall-Young p-value as the default decision rule, with the marginal p-value reserved for a single pre-specified item and Benjamini-Hochberg for longer instruments where a false discovery criterion is acceptable and $B$ clears the reachability floor. The interval retains descriptive value, which the Discussion returns to.
+Benjamini-Hochberg and Westfall-Young performed similarly with a single misfitting item, while with several misfitting items Benjamini-Hochberg detected somewhat more, as expected since the false discovery rate is a more permissive criterion when true effects are present. The price appears on the other side of the ledger, with pooled false positives of `r fpv("Benjamini-Hochberg")`% against `r fpv("Westfall-Young")`% at $B$ = 2000, roughly a doubling. The marginal p-value, finally, is close to its nominal level per item under the null, at `r ir_rng`% of fitting items in the dichotomous study, but unusable as a screening rule. Once items misfit its false positive rate on the fitting items rises, which the section on error rates under misfit returns to. Taken together, these results support the Westfall-Young p-value as the default among the decision rules examined, with Holm a close alternative once $B$ clears its floor, the marginal p-value reserved for a single pre-specified item, and Benjamini-Hochberg for longer instruments where a false discovery criterion is acceptable and $B$ clears the reachability floor. The interval retains descriptive value, which the Discussion returns to.
 
 ## Conditional outfit under the same rules
 
@@ -611,15 +716,15 @@ sd_cen <- sprintf("%.1f", mean(sd_loc$ratio[rank(sd_loc$loc) <= 5]))
 sd_ext <- sprintf("%.1f", mean(sd_loc$ratio[rank(-sd_loc$loc) <= 5]))
 ```
 
-Every result so far concerns conditional infit. The same bootstrap produces conditional outfit at no additional cost, and the decision rules are indifferent to which statistic they are given, so it is worth asking whether anything is gained by reading both. Outfit is particularly relevant because RUMM2030, a widely used Rasch analysis software package, relies on its unconditional form for item fit evaluation. Johansson [-@johansson_detecting_2025] compared conditional infit and outfit for dichotomous items under the interval rule and found outfit worse throughout. The sixth study revisits that comparison under the corrected p-value and extends it to polytomous items. The two item sets were placed at correlations that inject comparable infit, `r inj("dich20", "infit")` for the dichotomous set and `r inj("phq9", "infit")` for the phq9 set, both inside the range the real phq9 items reach. A single misfitting item was placed either near the person mean or off target, the Westfall-Young rule was applied at $B$ = 1000 and $\alpha$ = .05, and both statistics were read from the same bootstrap within each replication.
+Every result so far concerns conditional infit. The same bootstrap produces conditional outfit at no additional cost, and the decision rules are indifferent to which statistic they are given, so it is worth asking whether anything is gained by reading both. Outfit is also widely reported in its unconditional form, for example by RUMM2030, a widely used Rasch analysis software package. The comparison here concerns conditional outfit only, and its results do not carry over to the unconditional statistic, whose behavior under the model differs [@muller_item_2020]. Johansson [-@johansson_detecting_2025] compared conditional infit and outfit for dichotomous items under the interval rule and found outfit worse throughout. The sixth study revisits that comparison under the corrected p-value and extends it to polytomous items. The two item sets were placed at correlations that inject comparable infit, `r inj("dich20", "infit")` for the dichotomous set and `r inj("phq9", "infit")` for the phq9 set, both inside the range the real phq9 items reach. A single misfitting item was placed either near the person mean or off target, the Westfall-Young rule was applied at $B$ = 1000 and $\alpha$ = .05, and both statistics were read from the same bootstrap within each replication.
 
 Under the null conditions the FWER was `r r6(null6$outfit)`% for outfit against `r r6(null6$infit)`% for infit, across the four combinations of item set and sample size, with a Monte Carlo standard error of `r sprintf("%.1f", mcse6)` points. The marginal rates before the step-down were `r r6(marg6$outfit)`% and `r r6(marg6$infit)`%. Neither the statistic nor the correction is miscalibrated, so the studentized maximum needs no modification when the statistic it is given changes.
 
 Detection is a different matter. Infit detected the misfitting item more often than outfit in every one of the `r english_n(nrow(det6))` conditions, and @tbl-outfit gives the margins. The gap is not small, ranging from `r sprintf("%.0f", min(gap6))` to `r sprintf("%.0f", max(gap6))` percentage points. Outfit is the unweighted mean of squared standardized residuals and is conventionally expected to earn its place on items far from the person mean, and the injected outfit is indeed larger there. Detection nevertheless moves the other way. Averaged over item sets and sample sizes the infit advantage was `r sprintf("%.0f", mean(gap_on))` points for the on-target item and `r sprintf("%.0f", mean(gap_off))` points for the off-target one. The null conditions explain why. Outfit is the more variable statistic under a true model, by a factor of `r sdr("dich20")` in the dichotomous set and `r sdr("phq9")` in the phq9 set, and within the dichotomous set that factor is `r sd_cen` for the five most central items and `r sd_ext` for the five most extreme. The variance grows faster than the signal exactly where outfit was expected to help.
 
-Because both statistics come from the same bootstrap, the comparison can be made replication by replication rather than only on the margins. @tbl-outfit reports the discordant counts. Replications in which outfit flagged the misfitting item and infit did not never exceeded `r max(det6$only_out)` of 250, against up to `r max(det6$only_in)` in the other direction, and every condition favours infit at $p$ < .01 by an exact test on the discordant pairs. Outfit is close to redundant given infit rather than complementary to it.
+Because both statistics come from the same bootstrap, the comparison can be made replication by replication rather than only on the margins. @tbl-outfit reports the discordant counts. Replications in which outfit flagged the misfitting item and infit did not never exceeded `r max(det6$only_out)` of 250, against up to `r max(det6$only_in)` in the other direction, and every condition favours infit at $p$ < .01 by an exact test on the discordant pairs. In these conditions outfit added little to what infit detected.
 
-This has a direct consequence for practice, because both statistics often appear side by side in the standard output. Flagging an item when either statistic is significant tests 2$k$ hypotheses while each correction covers $k$, and the null FWER of that combined rule was `r r6(null6$union)`%, against a nominal 5% and the `r r6(c(null6$infit, null6$outfit))`% the two statistics reach on their own. The inflation is below the doubling that independent statistics would produce, since the two are computed on the same responses and are positively dependent, but it is real and it buys almost nothing. The recommendation is to decide on infit and to treat outfit as descriptive or not use it at all.
+This has a direct consequence for practice, because both statistics often appear side by side in the standard output. Flagging an item when either statistic is significant tests 2$k$ hypotheses while each correction covers $k$, and the null FWER of that combined rule was `r r6(null6$union)`%, against a nominal 5% and the `r r6(c(null6$infit, null6$outfit))`% the two statistics reach on their own. The inflation is below the doubling that independent statistics would produce, since the two are computed on the same responses and are positively dependent, but it is real and adds almost no detection. For conditional statistics at these settings, the results favor deciding on infit and treating outfit as descriptive.
 
 ```{r tbl-outfit}
 #| tbl-cap: "Detection and paired disagreement, conditional infit versus outfit"
@@ -685,19 +790,94 @@ The false positives are not specific to multidimensionality. With two misfitting
 
 Masking is mechanism-specific, and should be read as such. Two independently noisy items do not mask each other, and detection of the two target items at $n$ = 250 was `r dq("noise")`% under random responding against `r dq("dim")`% under multidimensionality. Masking requires the misfitting items to share a source. That is the case worth planning for, since a secondary dimension rarely involves a single item, but it is not a property of misfit in general.
 
+## Error rates when some items misfit
+
+```{r partial-prep}
+#| include: false
+# Familywise error over the fitting items (any fitting item flagged) and the
+# false discovery proportion, per replication, at B = 2000, for every
+# condition with misfitting items. Holm is computed from the marginal p-values
+# where the study stored them (not in the mechanism check).
+per_rep_err <- function(L, keys) {
+  L |>
+    summarise(fp = sum(flag[!is_mis]), tp = sum(flag[is_mis]),
+              .by = all_of(c(keys, "rep", "rule"))) |>
+    mutate(any_fp = fp > 0, fdp = ifelse(fp + tp > 0, fp / (fp + tp), 0)) |>
+    summarise(fwer = 100 * mean(any_fp), fdr = 100 * mean(fdp),
+              .by = all_of(c(keys, "rule")))
+}
+# polytomous studies at the anchored level
+PE <- r5_all |>
+  filter(B == 2000, !is.na(flag)) |>
+  per_rep_err(c("arm", "k", "n")) |>
+  mutate(set = ifelse(arm == "phq9", "9 phq9", "15 polytomous"))
+# dichotomous study (rho = .15), fresh data
+GPm <- GP |>
+  filter(k > 0, B == 2000) |>
+  mutate(p_holm = p.adjust(p_marg, "holm"), .by = c(rep, k, n, B),
+         is_mis = mapply(function(k, it) it %in% s_grid$misfit[seq_len(k)], k, item))
+DE <- bind_rows(
+  GPm |> transmute(k, n, rep, item, is_mis, rule = "Holm", flag = p_holm < al5),
+  GPm |> transmute(k, n, rep, item, is_mis, rule = "Westfall-Young", flag = padj_fwer < al5),
+  GPm |> transmute(k, n, rep, item, is_mis, rule = "Benjamini-Hochberg", flag = padj_bh < al5)
+) |>
+  per_rep_err(c("k", "n")) |>
+  mutate(set = "20 dichotomous")
+# mechanism check, random responding in the phq9 set
+ME <- bind_part(s_mech, "pval", c("rep", "k", "n")) |>
+  filter(B == 2000) |>
+  mutate(is_mis = mapply(function(k, it) it %in% mism[seq_len(k)], k, item))
+ME <- bind_rows(
+  ME |> transmute(k, n, rep, item, is_mis, rule = "Westfall-Young", flag = padj_fwer < al5),
+  ME |> transmute(k, n, rep, item, is_mis, rule = "Benjamini-Hochberg", flag = padj_bh < al5)
+) |>
+  filter(!is.na(flag)) |>
+  per_rep_err(c("k", "n")) |>
+  mutate(set = "9 phq9, random responding")
+partial <- bind_rows(PE |> select(-arm), DE, ME) |>
+  filter(rule %in% c("Holm", "Westfall-Young", "Benjamini-Hochberg"))
+pe <- function(set_, k_, n_, rule_, col = "fwer") sprintf("%.1f",
+  partial[[col]][partial$set == set_ & partial$k == k_ & partial$n == n_ &
+                   partial$rule == rule_])
+pe_rng <- function(set_, rule_, col, nmax) {
+  v <- partial[[col]][partial$set %in% set_ & partial$rule == rule_ & partial$n <= nmax]
+  sprintf("%.1f and %.1f", min(v), max(v))
+}
+# per-item false positive rate of the uncorrected marginal p-value on fitting
+# items, phq9 at the anchored level, n = 1000, B = 2000
+marg_fp <- r5_all |>
+  filter(arm == "phq9", n == 1000, B == 2000, rule == "Marginal p", !is_mis) |>
+  summarise(fp = 100 * mean(flag), .by = k)
+mfp <- function(k_) sprintf("%.1f", marg_fp$fp[marg_fp$k == k_])
+# Westfall-Young over fitting items at the strongest polytomous misfit level
+wy75 <- bind_part(s_poly, "pval", c("arm", "rep", "k", "n", "rho")) |>
+  filter(abs(rho - 0.75) < 1e-9, k > 0, B == 2000) |>
+  mutate(is_mis = mapply(function(a, k, it) it %in% mis5(a, k), arm, k, item)) |>
+  summarise(any = any(padj_fwer[!is_mis] < al5), .by = c(arm, k, n, rep)) |>
+  summarise(pct = 100 * mean(any), .by = c(arm, k, n))
+```
+
+The error rates reported so far were measured under the null, where every item fits. With misfitting items present, the error rate that strong FWER control concerns is the probability of flagging at least one of the fitting items, and the error rate that Benjamini-Hochberg targets is the false discovery rate, the expected proportion of flagged items that in fact fit. @tbl-partial reports both for every condition with misfitting items, at $B$ = 2000.
+
+At sample sizes of 250 or below, the rates were close to nominal. At the anchored misfit level in the polytomous sets, the Westfall-Young rate over the fitting items was between `r pe_rng(c("9 phq9", "15 polytomous"), "Westfall-Young", "fwer", 250)`%, and the false discovery rate of Benjamini-Hochberg between `r pe_rng(c("9 phq9", "15 polytomous"), "Benjamini-Hochberg", "fdr", 250)`%. At $n$ = 1000 every procedure exceeded its nominal level. For the nine phq9 items, the Westfall-Young rate over fitting items was `r pe("9 phq9", 1, 1000, "Westfall-Young")`% with one misfitting item and `r pe("9 phq9", 2, 1000, "Westfall-Young")`% with two, the Holm rate `r pe("9 phq9", 1, 1000, "Holm")`% and `r pe("9 phq9", 2, 1000, "Holm")`%, and the false discovery rate of Benjamini-Hochberg `r pe("9 phq9", 1, 1000, "Benjamini-Hochberg", "fdr")`% and `r pe("9 phq9", 2, 1000, "Benjamini-Hochberg", "fdr")`%. The rates grew with misfit severity, reaching `r sprintf("%.1f", max(wy75$pct))`% for Westfall-Young at $\rho$ = .75, and were higher under random responding, at `r pe("9 phq9, random responding", 2, 1000, "Westfall-Young")`% with two misfitting items at $n$ = 1000.
+
+The source of the excess lies in the per-item tests rather than in the corrections. At $n$ = 1000 the uncorrected marginal p-value flagged `r mfp(1)`% of the fitting phq9 items with one misfitting item and `r mfp(2)`% with two, where a valid per-item test would flag about 5%. Each fitting item's statistic is conditioned on a total score that includes the misfitting items, so its distribution changes when they misfit, while the bootstrap reference is generated from a model in which all items fit. This is the failure of subset pivotality described in the section on bootstrap p-values, and Ferreira [-@ferreiraMethodsTestingSmall2024, p. 2] makes the underlying point that a p-value can have the wrong distribution because the model is incorrect rather than because its null hypothesis is false. It also explains why Holm, which needs no pivotality condition, failed in the same conditions, since it relies on valid marginal p-values. The procedures studied here therefore provide weak FWER control, under the complete null, and no correction applied to these per-item tests can provide strong control once misfit contaminates the conditioning score. The contamination grows with sample size and misfit severity, which is why the failure is a large-sample one, and removing the most misfitting item before judging the rest reduces it, a point the Discussion returns to.
+
+The false discovery rate results bear on the comparison with Benjamini-Hochberg. Its false discovery rate stayed close to nominal where the per-item tests were close to valid and exceeded it where they were not, as every rule's error rate did, and the Westfall-Young rule had a false discovery rate at or below that of Benjamini-Hochberg in every condition. Benjamini-Hochberg is guaranteed to control the false discovery rate when the p-values of the true hypotheses are independent, or when the test statistics have positive regression dependency on each of the statistics of the true hypotheses [@benjamini_control_2001]. That condition covers statistics with a unidimensional latent variable distribution, but Benjamini and Yekutieli [-@benjamini_control_2001] leave open how far it extends to two-sided tests, and conditional infit is tested two-sided on a statistic computed from the residuals of the fitted model rather than on the responses themselves. Whether the condition holds here has therefore not been established, and the rates above are the evidence offered here. Resampling-based procedures that control the false discovery rate using the joint distribution of the statistics, in the spirit of the Westfall-Young step-down, also exist [@yekutieliResamplingbasedFalseDiscovery1999] and were not studied. The preference for a familywise criterion rests on the use of the analysis. A scale of 5 to 20 items is judged item by item, each flag leads to an item being considered for removal, and a single false flag changes the instrument. The false discovery rate is most useful when many hypotheses are tested and many discoveries are expected [@ferreiraMethodsTestingSmall2024], which is rarely the case in item fit analysis.
+
 # Decision stability
 
 The previous sections report error rates averaged over many simulated datasets. An analyst has one dataset. Because the cutoff interval and the p-values are computed from a finite simulation, two analysts who run identical analyses on the same data with different random seeds can potentially reach different conclusions. This section quantifies how often that happens. Ten datasets per condition were held fixed and each was analyzed with 25 different bootstrap seeds. Since the data are fixed, the observed infit values are fixed, and only the simulated reference distribution varies between seeds. Everything reported in this section is therefore simulation noise alone, with no contribution from sampling variability.
 
 For each item and dataset, the flag rate $p$ is the proportion of the 25 seeds in which the item was flagged. It estimates the probability that a single analysis of that dataset flags that item. An item is counted as unstable when $0 < p < 1$, meaning the flagging decision depends on the seed. Twenty-five seeds resolve the flag rate in steps of 0.04, so an item whose flag probability is very close to 0 or to 1 will usually appear perfectly stable, and the unstable counts below are best read as lower bounds.
 
-Two further quantities follow from $p$. Two independently seeded analyses disagree about an item when one flags it and the other does not, which happens with probability $2p(1 - p)$. This is largest, at 0.5, for an item flagged in half the seeds, and it falls to zero at either extreme, so it is a direct measure of how close an item sits to the decision boundary. The probability that two analyses disagree about at least one item in a scale of $k$ items is then
+The quantity that matters to an analyst is whether a second run would flag the same set of items. Two analyses with different seeds disagree when their sets of flagged items differ, and with 25 seeds per dataset the probability of this can be measured directly as the proportion of the 300 pairs of seeds that disagree,
 
 $$
-D = 1 - \prod_{i=1}^{k} \left(1 - 2p_i(1 - p_i)\right),
+D = 1 - \frac{\sum_j \binom{c_j}{2}}{\binom{S}{2}},
 $$ {#eq-disagree}
 
-computed within each dataset and averaged over the ten datasets of a condition. @eq-disagree treats the items as independent, which they are not. One bootstrap serves every item in an analysis, so a seed that shifts the simulated null distributions shifts several items together, and the step-down correction couples items further by comparing each against a maximum taken over the others. Where that dependence is positive, as it is for the item fit statistics themselves in @eq-fwer, the product overstates the true probability and $D$ is an upper bound. It is reported as a descriptive summary of how often two analysts would reach different conclusions rather than as a calibrated probability.
+where $c_j$ is the number of seeds that produced the $j$-th distinct set of flagged items and $S$ = 25 is the number of seeds. $D$ is computed within each dataset and averaged over the ten datasets of a condition, and it needs no assumption about how the items depend on each other. For a single item the corresponding probability is $2p(1 - p)$, the chance that one of two seeds flags the item and the other does not. It is largest, at 0.5, for an item flagged in half the seeds and falls to zero at either extreme, so it measures how close an item is to the decision boundary.
 
 ```{r stab-prep}
 #| include: false
@@ -717,7 +897,7 @@ rate_h <- SH |>
   mutate(rule = "Interval, w = .999")
 rates <- bind_rows(rate_p, rate_h)
 
-# pooled unstable percentages, realistic misfit (rho = .85, both arms and n)
+# pooled unstable percentages, anchored misfit (rho = .85, both arms and n)
 pool85 <- rates |>
   filter(rho == 0.85, k > 0) |>
   summarise(pct = 100 * mean(p > 0 & p < 1), .by = c(rule, B))
@@ -728,7 +908,7 @@ pool0 <- rates |>
   filter(k == 0, rule == "FWER p-value") |>
   summarise(pct = 100 * mean(p > 0 & p < 1), .by = B)
 
-# dataset-cluster bootstrap SE for the pooled realistic estimates (FWER)
+# dataset-cluster bootstrap SE for the pooled anchored estimates (FWER)
 set.seed(11)
 p85f <- rates |> filter(rho == 0.85, k > 0, rule == "FWER p-value") |>
   mutate(cl = paste(arm, n, dataset))
@@ -743,14 +923,48 @@ boot_pool <- function(B_) {
 }
 se400 <- boot_pool(400); se2000 <- boot_pool(2000)
 
-# pooled two-analyst disagreement (FWER), realistic misfit
-dis <- rate_p |>
-  filter(rho == 0.85, k > 0) |>
-  mutate(d = 2 * p * (1 - p)) |>
-  summarise(D = 1 - prod(1 - d), .by = c(arm, n, B, dataset)) |>
-  summarise(pct = 100 * mean(D), .by = B) |>
+# two-analyst disagreement measured from seed pairs (Equation 5): the share of
+# the choose(S, 2) pairs of seeds whose sets of flagged items differ. Seeds
+# with a missing item result are dropped. The independence product with the
+# finite-seed correction S / (S - 1) is kept for comparison.
+skeys <- c("rule", "arm", "k", "rho", "n", "B", "dataset")
+SF <- bind_rows(
+  SP |> transmute(arm, k, rho, n, dataset, seed, B, item,
+                  rule = "FWER p-value", flag = as.integer(padj_fwer < al)),
+  SH |> transmute(arm, k, rho, n, dataset, seed, B, item,
+                  rule = "Interval, w = .999", flag = as.integer(code > 0))
+) |>
+  filter(!any(is.na(flag)), .by = all_of(c(skeys, "seed")))
+D_emp <- SF |>
+  arrange(item) |>
+  summarise(pat = paste(flag, collapse = ""), .by = all_of(c(skeys, "seed"))) |>
+  summarise(S = n(), D = 1 - sum(choose(table(pat), 2)) / choose(n(), 2),
+            .by = all_of(skeys))
+D_ind <- SF |>
+  summarise(p = mean(flag), S = n(), .by = all_of(c(skeys, "item"))) |>
+  summarise(D_ind = 1 - prod(1 - 2 * p * (1 - p) * S / (S - 1)),
+            .by = all_of(skeys))
+D_all <- left_join(D_emp, D_ind, by = skeys)
+stopifnot(nrow(D_all) == nrow(D_emp), all(D_emp$S >= 20))
+
+# pooled two-analyst disagreement (FWER), anchored misfit
+dis <- D_all |>
+  filter(rho == 0.85, k > 0, rule == "FWER p-value") |>
+  summarise(pct = 100 * mean(D), pct_ind = 100 * mean(D_ind), .by = B) |>
   arrange(B)
 dv <- setNames(sprintf("%.0f", dis$pct), dis$B)
+dis_gap <- sprintf("%.1f", max(abs(dis$pct - dis$pct_ind)))
+# where independence fails: datasets in which the independence product
+# overstates or understates the measured disagreement by more than 5 points
+dep <- D_all |>
+  filter(k > 0) |>
+  summarise(N = n(), over = sum(D_ind - D > 0.05), under = sum(D_ind - D < -0.05),
+            maxgap = 100 * max(abs(D_ind - D)), .by = rule)
+dq_ <- function(rule_, col) dep[[col]][dep$rule == rule_]
+# disagreement at B = 2000 across all misfit conditions (FWER)
+dis_cond <- D_all |>
+  filter(k > 0, rule == "FWER p-value", B == 2000) |>
+  summarise(pct = 100 * mean(D), .by = c(arm, rho, n))
 
 # borderline-item counts per dataset at the strongest misfit, B = 2000
 bord <- rate_p |>
@@ -765,28 +979,33 @@ unst <- rates |>
   summarise(pct = 100 * mean(p > 0 & p < 1), .by = c(rule, arm, rho, n, B))
 ```
 
-Under the null conditions, flagging with the Westfall-Young p-value is essentially reproducible. Pooled across both item sets and sample sizes, `r sprintf("%.1f", pool0$pct[pool0$B == 100])`% of items had a seed-dependent flag at $B$ = 100, `r sprintf("%.1f", pool0$pct[pool0$B == 400])`% at $B$ = 400, and none at $B$ = 2000. At realistic misfit ($\rho$ = .85), pooled the same way, `r pf("FWER p-value", 400)`% of items were unstable at $B$ = 400 and `r pf("FWER p-value", 2000)`% at $B$ = 2000, with a Monte Carlo standard error of `r sprintf("%.1f", max(se400, se2000))` percentage points. The interval rule at $w$ = .999 was consistently less stable, with `r pf("Interval, w = .999", 400)`% unstable items at $B$ = 400 and `r pf("Interval, w = .999", 2000)`% at $B$ = 2000. The two-analyst disagreement probability shows that more iterations keep helping beyond the point where error rates have converged. Pooled at realistic misfit, the probability that two seeds using the Westfall-Young rule disagree about at least one item was `r dv["100"]`% at $B$ = 100, `r dv["400"]`% at $B$ = 400, `r dv["1000"]`% at $B$ = 1000, and `r dv["2000"]`% at $B$ = 2000. In other words, $B$ = 400 is where the error rates are trustworthy, but reproducibility keeps improving well past it.
+Under the null conditions, flagging with the Westfall-Young p-value is essentially reproducible. Pooled across both item sets and sample sizes, `r sprintf("%.1f", pool0$pct[pool0$B == 100])`% of items had a seed-dependent flag at $B$ = 100, `r sprintf("%.1f", pool0$pct[pool0$B == 400])`% at $B$ = 400, and none at $B$ = 2000. At the anchored misfit level ($\rho$ = .85), pooled the same way, `r pf("FWER p-value", 400)`% of items were unstable at $B$ = 400 and `r pf("FWER p-value", 2000)`% at $B$ = 2000, with a Monte Carlo standard error of `r sprintf("%.1f", max(se400, se2000))` percentage points. The interval rule at $w$ = .999 was consistently less stable, with `r pf("Interval, w = .999", 400)`% unstable items at $B$ = 400 and `r pf("Interval, w = .999", 2000)`% at $B$ = 2000. The two-analyst disagreement probability shows that more iterations keep helping beyond the point where error rates have converged. Pooled at the anchored level, the probability that two seeds using the Westfall-Young rule disagree about at least one item was `r dv["100"]`% at $B$ = 100, `r dv["400"]`% at $B$ = 400, `r dv["1000"]`% at $B$ = 1000, and `r dv["2000"]`% at $B$ = 2000. In other words, $B$ = 400 is where the error rates are trustworthy, but reproducibility keeps improving well past it.
+
+Treating the items as if they flipped independently gives nearly the same pooled values, within `r dis_gap` percentage points, once each item's $2p(1 - p)$ is multiplied by $S/(S - 1)$ to remove the bias of estimating $p$ from 25 seeds. The average hides where independence fails. For the Westfall-Young rule the independence product overstated the measured disagreement by more than 5 percentage points in `r dq_("FWER p-value", "over")` of `r dq_("FWER p-value", "N")` combinations of dataset and number of iterations, by up to `r sprintf("%.0f", dq_("FWER p-value", "maxgap"))` points, and `r if (dq_("FWER p-value", "under") == 0) "never understated it by as much" else paste("understated it by as much in", dq_("FWER p-value", "under"))`. In those datasets one seed's maximum statistic moves several decisions together, the coupling that the step-down introduces. For the interval rule, whose items are judged separately, the two agreed within `r sprintf("%.0f", dq_("Interval, w = .999", "maxgap"))` points in every dataset.
 
 ```{r fig-stability}
 #| fig-cap: "Seed dependence of flagging decisions"
 #| fig-width: 8
 #| fig-height: 4.5
 unst |>
-  ggplot(aes(factor(B), pct, colour = factor(rho), linetype = rule,
+  mutate(rho = factor(sprintf("%.2f", rho))) |>
+  ggplot(aes(factor(B), pct, colour = rho, shape = rho, linetype = rule,
              group = interaction(rho, rule))) +
-  geom_line() +
-  geom_point(size = 1) +
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 1.8) +
   facet_grid(arm ~ n, labeller = label_both) +
-  labs(x = "Bootstrap iterations (B)", y = "Items with seed-dependent flag (%)",
-       colour = "Correlation", linetype = "Decision rule") +
-  theme_paper(12)
+  scale_bw("Correlation", colours = rev(pal_ramp3), linetype = FALSE) +
+  scale_linetype_manual(name = "Decision rule", values = c("solid", "42")) +
+  labs(x = "Bootstrap iterations (B)", y = "Items with seed-dependent flag (%)") +
+  theme_paper(12) +
+  theme(legend.key.width = grid::unit(1.4, "cm"))
 ```
 
 *Note.* Percentage of items whose flagging decision depends on the bootstrap seed (25 seeds per dataset, 10 datasets per condition), by number of iterations, misfit severity, decision rule, item set, and sample size. Lower values of the inter-dimensional correlation mean stronger misfit. Per-condition values carry Monte Carlo standard errors of up to about 3 percentage points and are tabulated in @tbl-stab-appendix.
 
-@fig-stability shows the full pattern, and its most striking feature is that instability is not monotone in misfit severity or sample size. The strongest misfit ($\rho$ = .15) produces the most instability at $n$ = 250 but none at all at $n$ = 1000, where every item is flagged or cleared decisively in every seed. The explanation is the number of items sitting near the decision boundary. At $B$ = 2000 the strongest misfit condition leaves on average `r bb(250)` items per dataset with a seed-dependent flag at $n$ = 250, but `r bb(1000)` at $n$ = 1000. Instability arises where the evidence about an item is strong enough to approach the flagging threshold but not strong enough to pass it clearly, and it is the number of such boundary items, not the severity of misfit or the sample size as such, that drives it.
+@fig-stability shows the full pattern, and its most striking feature is that instability is not monotone in misfit severity or sample size. The strongest misfit ($\rho$ = .15) produces the most instability at $n$ = 250 but none at all at $n$ = 1000, where every item is flagged or cleared decisively in every seed. The explanation is the number of items sitting near the decision boundary. At $B$ = 2000 the strongest misfit condition leaves on average `r bb(250)` items per dataset with a seed-dependent flag at $n$ = 250, but `r bb(1000)` at $n$ = 1000. Instability arises where the evidence about an item is strong enough to approach the flagging threshold but not strong enough to pass it clearly, and it is the number of such boundary items, not the severity of misfit or the sample size as such, that drives it. With ten datasets per condition, the stability results describe the datasets drawn and are best read as an illustration of this dependence rather than as rates that carry over to other data. At $B$ = 2000 the probability that two seeds disagreed ranged from `r sprintf("%.0f", min(dis_cond$pct))` to `r sprintf("%.0f", max(dis_cond$pct))`% across the misfit conditions, according to how many items lay near the threshold.
 
-This has a practical implication that iterations cannot buy. When several items sit near the boundary, no affordable number of iterations makes the flagging decisions reproducible, since the instability reflects genuine ambiguity in the data rather than simulation noise. Seed sensitivity is then best understood as a diagnostic. If re-running an analysis with a different seed changes which items are flagged, the affected items should be treated as borderline cases that need more data or substantive judgment, not as cases that a luckier seed resolved. Reporting the number of iterations and the seed alongside item fit results makes this visible to readers. The Westfall-Young p-value is preferable to the interval rule on this criterion as well, and the interval rule's instability at $w$ = .999 declines only slowly with $B$, consistent with its extreme quantiles remaining poorly estimated throughout the practical range.
+All of this instability is simulation noise, since the data are held fixed. How much of it an analysis shows, however, is set by the data. If an item's p-value with unlimited iterations is $\pi$, its Monte Carlo estimate from $B$ iterations has a standard error of about $\sqrt{\pi(1 - \pi)/B}$, so the number of iterations needed to make the decision reproducible grows with the inverse square of the distance between $\pi$ and $\alpha$. For items whose p-values lie close to the threshold no affordable number of iterations removes the instability, and how many such items a dataset has is a property of the dataset. Seed sensitivity is then best understood as a diagnostic. If re-running an analysis with a different seed changes which items are flagged, the affected items are borderline cases whose evidence lies close to the threshold, and they need more data or substantive judgment rather than a luckier seed. Reporting the number of iterations and the seed alongside item fit results makes this visible to readers. The Westfall-Young p-value is preferable to the interval rule on this criterion as well, and the interval rule's instability at $w$ = .999 declines only slowly with $B$, consistent with its extreme quantiles remaining poorly estimated throughout the practical range.
 
 # Discussion
 
@@ -802,7 +1021,21 @@ dpt_short <- sprintf("%.0f", 100 * (1 - min(dpt10$m)))
 # null familywise error of the Westfall-Young rule, dichotomous study
 wyq <- function(B_) sprintf("%.1f", null_rules$wy[null_rules$B == B_])
 
-# Westfall-Young detection at the calibrated misfit level, B = 2000
+# Westfall-Young null rate from B = 400 by item set, pooled over n
+wy_k <- bind_rows(
+  null_any |> filter(B >= 400) |> summarise(pct = 100 * mean(wy), .by = B) |>
+    mutate(set = "20 dichotomous"),
+  bind_part(s_poly, "pval", c("arm", "rep", "k", "n", "rho")) |>
+    filter(k == 0, B >= 400) |>
+    summarise(any = any(padj_fwer < al5, na.rm = TRUE), .by = c(arm, rep, n, B)) |>
+    summarise(pct = 100 * mean(any), .by = c(arm, B)) |> rename(set = arm),
+  P7 |> filter(k == 0, B >= 400) |>
+    summarise(any = any(padj_fwer < 0.05, na.rm = TRUE), .by = c(rep, n, B)) |>
+    summarise(pct = 100 * mean(any), .by = B) |> mutate(set = "5 polytomous")
+)
+wy_k_rng <- sprintf("%.1f and %.1f", min(wy_k$pct), max(wy_k$pct))
+
+# Westfall-Young detection at the anchored misfit level, B = 2000
 det_wy <- RP |>
   mutate(is_mis = mapply(function(a, k, it) it %in% mis5(a, k), arm, k, item)) |>
   filter(is_mis, B == 2000)
@@ -835,17 +1068,17 @@ This paper asked how the interval width and the number of bootstrap iterations s
 
 Five recommendations follow from the results.
 
-1. **Decide with the corrected p-value.** Use the Westfall-Young step-down at $\alpha$ = .05 as the decision rule for conditional item fit. Its FWER under the null sat close to the nominal level from $B$ = 400 onward. It also detected more misfit than the interval rule at a matched error rate, and it was the more stable of the two under reseeding. Against Benjamini-Hochberg it holds up even where that procedure is unconstrained: on a five-item scale, whose reachability floor of `r bhf(5)` iterations binds at no $B$ examined here, the two detected the misfitting item equally often while Benjamini-Hochberg flagged roughly half again as many fitting ones.
+1. **Decide with the corrected p-value.** Among the decision rules examined, the Westfall-Young step-down at $\alpha$ = .05 performed best, and it is the recommended decision rule for conditional item fit. Its FWER under the null was at or slightly below the nominal level from $B$ = 400 onward. Holm gave nearly the same results once $B$ cleared its floor of $k/\alpha$ iterations, but the step-down needs no such floor. It also detected more misfit than the interval rule at a matched error rate, and it was the more stable of the two under reseeding. Against Benjamini-Hochberg it holds up even where that procedure is unconstrained: on a five-item scale, whose reachability floor of `r bhf(5)` iterations binds at no $B$ examined here, the two detected the misfitting item equally often while Benjamini-Hochberg flagged roughly half again as many fitting ones. Other FWER procedures were not examined. The control holds when all items fit, and once items misfit the false flags on fitting items grow with sample size for every rule, which the fifth recommendation addresses.
 
-2. **Use at least 400 iterations, and more when computation allows.** Below 400 the Westfall-Young rule was mildly liberal under the null, at `r wyq(100)`% at $B$ = 100, and decisions were noticeably seed-dependent. The probability that two analysts using different seeds disagree about at least one item kept falling past that point, from `r dv["400"]`% at $B$ = 400 to `r dv["2000"]`% at $B$ = 2000, so at least 1000 to 2000 iterations are worth the cost for a final analysis.
+2. **Use at least 400 iterations, and more when computation allows.** Below 400 the Westfall-Young rule was mildly liberal under the null, at `r wyq(100)`% at $B$ = 100, an excess that comes from how the statistics are studentized and that joint studentization removes, and decisions were noticeably seed-dependent. The probability that two analysts using different seeds disagree about at least one item kept falling past that point, from `r dv["400"]`% at $B$ = 400 to `r dv["2000"]`% at $B$ = 2000, so at least 1000 to 2000 iterations are worth the cost for a final analysis.
 
 3. **Report the interval as a description and set its width to .95.** At w = .95, `r bq(0.95)` iterations bring the interval within 1% of the width it reaches with 10 000, so the band shown to readers is close to the width it claims to be. At w = .999 the same 1% takes `r bq(0.999)` iterations, far more than is usually run, so the stated width is not the width the reader is actually seeing. A band showing where a fitting item's infit is expected to fall is worth reporting, but only when its stated width is real.
 
 4. **Report the number of iterations and the random seed.** Both are part of the analysis. Without them a reader cannot tell whether a borderline item would have been flagged in a rerun. The seed will however only be useful if the data are also shared.
 
-5. **Keep removing items one at a time.** Nothing in these results changes the workflow recommended by Johansson [-@johansson_detecting_2025]. Item fit statistics are computed jointly, misfitting items distort the estimates that all other items are evaluated against, and the corrections studied here address multiplicity rather than that dependence.
+5. **Remove items one at a time.** This is the workflow recommended by Johansson [-@johansson_detecting_2025], and its sequential error rates were not evaluated here, since every reported rate refers to a single analysis. It is retained because misfitting items contaminate the total score that the other items are judged against, which is the source of the false flags on fitting items when some items misfit, and removing the most misfitting item first reduces that contamination before the remaining items are judged. Repeated testing across removal rounds adds multiplicity that the corrections studied here do not address, as the Limitations discuss.
 
-The default settings in `easyRasch2` 1.1.0, with $w$ = .999 and $B$ = 250, show what this looks like in practice. A 99.9% interval has to contain 99.9% of the simulated values, and with the default 250 iterations that is all of them, so the interval is nothing more than the range of what the simulation happened to produce. The width setting has no effect on anything, and the error rate the analysis delivers follows from the iteration count rather than from a deliberate choice. For 20 dichotomous items, $w$ = .999 promises that a fitting item will be falsely flagged somewhere in the scale about `r pq("20 dichotomous", 0.999)`% of the time. What the simulation delivered was `r fq("20 dichotomous", 0.999, 400)`% at 400 iterations and `r fq("20 dichotomous", 0.999, 200)`% at 200, the two settings that bracket the default 250 iterations. The recommendation that follows is to base flagging on the Westfall-Young corrected p-value rather than on the interval, and to show the interval as a descriptive band at $w$ = .95.
+The default settings in `easyRasch2` 1.1.0, with $w$ = .999 and $B$ = 250, show what this looks like in practice. A 99.9% interval has to contain 99.9% of the simulated values, and with the default 250 iterations that is all of them, so the interval is nothing more than the range of what the simulation happened to produce. The width setting has no effect on anything, and the error rate the analysis delivers follows from the iteration count rather than from a deliberate choice. For 20 dichotomous items, $w$ = .999 promises that a fitting item will be falsely flagged somewhere in the scale about `r pq("20 dichotomous", 0.999)`% of the time. What the simulation delivered was `r fq("20 dichotomous", 0.999, 400)`% at 400 iterations and `r fq("20 dichotomous", 0.999, 200)`% at 200, the two settings that bracket the default 250 iterations. The recommendation that follows is to base flagging on the Westfall-Young corrected p-value rather than on the interval, and to show the interval as a descriptive band at $w$ = .95. The package has since moved to these settings. From version 1.2.0, `easyRasch2` flags items on the Westfall-Young p-value, shows the interval at $w$ = .95 and runs 400 iterations by default, and its development version studentizes the observed and simulated statistics jointly, which removes the small-$B$ excess shown in @tbl-null-rules.
 
 These recommendations are not confined to users of R. The same analyses are available through `easyRasch2jmv` [@johanssonEasyRasch2jmv2026], a module for the jamovi statistical platform [@jamovi_2026] that delegates every computation to `easyRasch2`, so that results are numerically identical given the same seeds and iteration counts. Simulation-based cutoffs can be more demanding to use than a rule of thumb, since they require a decision about the number of iterations and about which decision rule to apply, and the recommendations given here are meant to make those decisions simpler.
 
@@ -859,26 +1092,26 @@ rec |>
   transmute(Items = m,
             Width = sub("^0", "", sprintf("%.5f", w)),
             Interval = fmt_n(B_int),
-            `Benjamini-Hochberg` = fmt_n(B_bh),
+            `Holm, Benjamini-Hochberg` = fmt_n(B_bh),
             `Westfall-Young` = fmt_n(B_wy)) |>
   knitr::kable(align = "rrrrr")
 ```
 
-*Note.* By number of items, at a familywise error rate or false discovery rate of .05. The width solves @eq-fwer. The interval column applies the draws-per-tail rule $B$ = 20/(1 - $w$) to that width, rounded to two significant digits. The Benjamini-Hochberg column is the reachability floor of @eq-bhfloor for a single standout item, and the Westfall-Young column is 1/$\alpha$. The columns give the point at which each rule can operate at the stated error rate, not a recommended setting.
+*Note.* By number of items, at a familywise error rate or false discovery rate of .05. The width solves @eq-fwer. The interval column applies the draws-per-tail rule $B$ = 20/(1 - $w$) to that width, rounded to two significant digits. The Holm, Benjamini-Hochberg column is the reachability floor of @eq-bhfloor for a single standout item, which the two procedures share, and the Westfall-Young column is 1/$\alpha$. The columns give the point at which each rule can operate at the stated error rate, not a recommended setting.
 
-Three patterns in the table underpin the recommendations above. First, the iterations that the interval rule needs grow steeply with the number of items. Already at 20 items the required width of `r wq(20)` implies about `r recq("B_int", 20)` iterations, which is an order of magnitude beyond what is usually run, and these figures apply the draws-per-tail rule beyond the iteration counts the convergence study covered. Second, the Benjamini-Hochberg floor grows linearly with the number of comparisons. It is a reachability constraint rather than a matter of power, so no amount of misfit compensates for too few iterations. Third, the Westfall-Young requirement does not grow at all, because the correction uses the distribution of the maximum rather than a per-comparison quantile.
+Three patterns in the table underpin the recommendations above. First, the iterations that the interval rule needs grow steeply with the number of items. Already at 20 items the required width of `r wq(20)` implies about `r recq("B_int", 20)` iterations, which is an order of magnitude beyond what is usually run, and these figures apply the draws-per-tail rule beyond the iteration counts the convergence study covered. Second, the floor of Holm and Benjamini-Hochberg grows linearly with the number of comparisons. It is a reachability constraint rather than a matter of power, so no amount of misfit compensates for too few iterations. Third, the Westfall-Young requirement does not grow at all, because the correction uses the distribution of the maximum rather than a per-comparison quantile. This is a statement about reachability only. The Monte Carlo precision of the step-down's first critical value is that of the $1 - \alpha$ quantile of the maximum, which for a fixed $\alpha$ depends on $B$ rather than directly on the number of items, and in the simulations the null rate from $B$ = 400 was between `r wy_k_rng` percent across the 5, 9, 15 and 20-item sets, with no trend in the number of items. Reproducibility at the scale level is another matter, since more items mean more items that can lie near the threshold, and the stability study covers 9 and 15 items only.
 
 The last column is not a recommendation, which is why the second recommendation in the list above asks for far more than 20 iterations. Those iterations make a rejection possible, but they do not make a decision reproducible. Error rates and reproducibility are separate requirements, and it is the latter that sets the number of iterations worth running in practice.
 
 ## What changes for the earlier recommendations
 
-The recommendation of 100 to 400 parametric bootstrap iterations in Johansson [-@johansson_detecting_2025], scaled by sample size, should be replaced by a number chosen from the decision rule. Sample size does not play a role here. For the interval rule the requirement follows from the width, and the width that delivers a chosen error rate follows in turn from the number of items, so the iterations needed rise steeply with scale length. Benjamini-Hochberg must clear a floor linear in the number of comparisons. The Westfall-Young rule is the exception, in which neither sample size nor item count matters for the iteration count. It is set by calibration and reproducibility alone, with a floor of 400 and a recommendation of 1000 to 2000 for a final analysis.
+The recommendation of 100 to 400 parametric bootstrap iterations in Johansson [-@johansson_detecting_2025], scaled by sample size, should be replaced by a number chosen from the decision rule. Sample size does not play a role here. For the interval rule the requirement follows from the width, and the width that delivers a chosen error rate follows in turn from the number of items, so the iterations needed rise steeply with scale length. Holm and Benjamini-Hochberg must clear a floor linear in the number of comparisons. The Westfall-Young rule is the exception, in which neither sample size nor item count sets a floor on the iteration count. Its iterations are set by calibration and reproducibility, with a floor of 400 and a recommendation of 1000 to 2000 for a final analysis.
 
-One conclusion of the earlier paper is confirmed and extended. Johansson [-@johansson_detecting_2025] compared conditional infit with conditional outfit for dichotomous items under the interval rule and found outfit worse throughout, to the point of questioning whether it is useful for detecting misfit at all. The present study reaches the same conclusion under a different decision rule, the Westfall-Young corrected p-value, and adds polytomous items, where infit again detected more misfit in every condition. Extending the comparison to polytomous items matters because the two formats differ in how much information each item carries, which is the same reason misfit severity has to be calibrated on the infit scale rather than on the generating parameters.
+One conclusion of the earlier paper is confirmed and extended. Johansson [-@johansson_detecting_2025] compared conditional infit with conditional outfit for dichotomous items under the interval rule and found outfit worse throughout, to the point of questioning whether it is useful for detecting misfit at all. The present study reaches the same conclusion for conditional outfit under a different decision rule, the Westfall-Young corrected p-value at $B$ = 1000, and adds polytomous items, where infit again detected more misfit in every condition studied. Extending the comparison to polytomous items matters because the two formats differ in how much information each item carries, which is the same reason misfit severity has to be calibrated on the infit scale rather than on the generating parameters.
 
 Two things are added rather than confirmed. Outfit is not miscalibrated under the corrected p-value, so its weakness is a matter of power and not of error control, and the reason for that weakness is now visible. Outfit is the more variable statistic under a true model, and its variability grows with distance from the person mean, so the items outfit is conventionally recommended for are the ones it handles worst.
 
-## Detection at realistic misfit levels
+## Detection at the anchored misfit level
 
 The misfit levels used here were calibrated against real item fit values rather than chosen to be clearly detectable, and detection is correspondingly modest. With the nine phq9-derived items and a single misfitting item at $\rho$ = .85, the Westfall-Young rule detected the misfit in `r dwy("phq9", 250, 1)`% of replications at $n$ = 250 and `r dwy("phq9", 150, 1)`% at $n$ = 150, reaching `r dwy("phq9", 1000, 1)`% only at $n$ = 1000. These are the numbers for the best of the four rules. The interval rule at $w$ = .999 was lower still.
 
@@ -890,15 +1123,15 @@ The practical consequence is that at $n$ = 250 or below, an item fit analysis th
 
 Nothing in these decision rules is specific to item fit. Any statistic whose cutoff is drawn from the same parametric bootstrap can be handled the same way, as long as a null distribution is generated separately for each comparison. Yen's $Q_3$ residual correlations [@yen_effects_1984] are the clearest case, since every item pair has its own expected distribution under the fitted model and simulation-based critical values for $Q_3$ have been derived before [@christensen_critical_2017]. A study of simulation-based cutoffs for evaluating local dependence with $Q_3$ residuals is in preparation.
 
-One result carries over immediately. The number of comparisons grows quadratically with the number of items, so a 15-item scale gives 105 pairs and a 20-item scale gives 190. By @eq-bhfloor, the Benjamini-Hochberg procedure then cannot flag a single standout pair below `r bhf(105)` and `r bhf(190)` iterations respectively, which requires significant computation time. The Westfall-Young requirement does not move, since it does not depend on the number of comparisons. A false discovery rate criterion is therefore likely to be a poor fit for pairwise statistics such as $Q_3$.
+One result carries over immediately. The number of comparisons grows quadratically with the number of items, so a 15-item scale gives 105 pairs and a 20-item scale gives 190. By @eq-bhfloor, the Benjamini-Hochberg procedure then cannot flag a single standout pair below `r bhf(105)` and `r bhf(190)` iterations respectively, which requires significant computation time. Holm has the same floor. The reachability requirement of the Westfall-Young step-down does not move, since it does not depend on the number of comparisons, and a false discovery rate criterion is therefore likely to be a poor fit for pairwise statistics such as $Q_3$. Whether the step-down's calibration and stability hold with 105 or 190 comparisons is a separate question for that study, as is subset pivotality, since residual correlations that share items are close to the case of Ferreira's [-@ferreiraMethodsTestingSmall2024] Example 2, in which the condition fails.
 
 # Limitations
 
 Misfit was induced by two mechanisms only. Multidimensionality is used throughout, and the mechanism check reported alongside the rule comparisons replaces it with random responding at matched infit. Other mechanisms, such as local dependence and genuine variation in item discrimination, were not examined.
 
-Each replication is a single pass through the data. No study simulates the iterative workflow in which a flagged item is removed and the remaining items reanalyzed, which would be the practical use scenario. The error rates reported here are the rates for one analysis. Repeated testing across removal rounds is a further source of multiplicity that the corrections studied here do not address, and quantifying it would require a design in which the item set changes between rounds.
+Each replication is a single pass through the data. No study simulates the iterative workflow in which a flagged item is removed and the remaining items reanalyzed, which would be the practical use scenario. The error rates reported here are the rates for one analysis, and the procedures control the FWER when all items fit but not when some misfit. The iterative workflow is the practical response to that, and its error rates are the most important open question. Repeated testing across removal rounds is a further source of multiplicity that the corrections studied here do not address, and quantifying it would require a design in which the item set changes between rounds.
 
-The scope is narrow in four further respects. The item sets had 5, 9, 15, and 20 items, so @eq-fwer is verified in that range and not for longer instruments, where the joint recommendation in @tbl-recommendations extrapolates to 30 items without simulation support. The comparison between conditional infit and conditional outfit held the decision rule and the iteration count fixed, at the Westfall-Young p-value with $B$ = 1000, so it establishes an ordering at the recommended settings rather than across the design that the infit results span. Every study used $\alpha$ = .05, and while the relations themselves are general in $\alpha$, the reported rates and the calibration of the 400-iteration floor are not, so an analyst working at a different level would have to redo @tbl-recommendations and could not assume that 400 iterations still calibrates. And the realistic misfit levels were calibrated against a single instrument, which fixes what "realistic" means here to one empirical reference point rather than to a survey of what analysts encounter. Replication counts differ between the studies, and the Monte Carlo error of each estimate is reported in @tbl-mcse.
+The scope is narrow in further respects. The item sets had 5, 9, 15, and 20 items, so @eq-fwer is verified in that range and not for longer instruments, where the joint recommendation in @tbl-recommendations extrapolates to 30 items without simulation support. The comparison between conditional infit and conditional outfit held the decision rule and the iteration count fixed, at the Westfall-Young p-value with $B$ = 1000, so it establishes an ordering at the recommended settings rather than across the design that the infit results span, and it concerns conditional outfit, not the unconditional outfit that some software reports. Of the FWER procedures, only the Westfall-Young step-down and Holm were compared, and no resampling-based false discovery rate procedure was included. Joint studentization was evaluated in the dichotomous null conditions only. Every study used $\alpha$ = .05, and while the relations themselves are general in $\alpha$, the reported rates and the calibration of the 400-iteration floor are not, so an analyst working at a different level would have to redo @tbl-recommendations and could not assume that 400 iterations still calibrates. And the anchored misfit levels were calibrated against a single instrument, which fixes the anchor to one empirical reference point rather than to a survey of what analysts encounter. That instrument has an unusual configuration, with two items far above the person mean, and the stylised 15-item set is the only regular configuration it is compared with. Matching on mean infit, finally, does not make different misfit mechanisms equivalent, as the mechanism check shows. Replication counts differ between the studies, and the Monte Carlo error of each estimate is reported in @tbl-mcse.
 
 A practical limit shows up at the short end, and it concerns the bootstrap rather than the bound. Five polytomous items with four response categories imply fifteen threshold parameters, and at $n$ = 250 `r drop5$n_bad` of the `r format(drop5$n_all, big.mark = " ")` bootstraps run in that study produced no usable p-value at all, their simulated statistics having too little variance to studentize by. This did not occur at $n$ = 600, nor anywhere in the studies with 9 items or more. It is rare enough to be a curiosity rather than an obstacle, but a five-item scale at a small sample is where the procedure starts to strain, and nothing here establishes how it behaves below that.
 
@@ -907,17 +1140,17 @@ A practical limit shows up at the short end, and it concerns the bootstrap rathe
 ```{r repro-prep}
 #| include: false
 sims    <- list(s_conv, s_grid, s_poly, s_stab, s_mech, s_stat, s_short)
-n_cells <- sum(vapply(sims, function(x) nrow(x$grid), numeric(1)))
-n_hours <- sum(vapply(sims, function(x) x$elapsed_min, numeric(1))) / 60
+n_cells <- sum(vapply(sims, function(x) x$own_cells %||% nrow(x$grid), numeric(1)))
+n_hours <- sum(vapply(sims, function(x) x$own_min %||% x$elapsed_min, numeric(1))) / 60
 ```
 
 Everything needed to reproduce this paper is in the repository at `r repo_url`, which contains the manuscript source, the simulation code, and the cached simulation results.
 
 The manuscript is written as a Quarto document [@Allaire_Quarto_2026]. Every number reported in the body, including those in the figures and tables, is computed at render time from the cached results rather than transcribed, so the reported values cannot drift from the data behind them. The abstract is the one exception: Quarto evaluates the document metadata before the code that loads the caches, so the few figures quoted there are typed and were checked against the body by hand. Rendering the manuscript reproduces the whole paper in seconds without rerunning any simulation.
 
-The studies are in `simulations/`, each writing its results to an `.rds` file beside it. There are six Quarto files for the seven studies, because the interval convergence and error-rate studies share a design and are run from one file. Three further scripts hold the calibration scans that fix the misfit levels, two of which the manuscript reads directly for @tbl-calibration and for the five-item calibration in the Method. Shared code, including the data generators and the plot theme, is in `R/helpers.R`. The seven studies comprise `r format(n_cells, big.mark = " ")` design cells and took about `r sprintf("%.0f", n_hours)` hours to run on ten M4 cores. Each study uses a resumable runner. Design cells are keyed on the columns of the design grid, results are checkpointed to disk after every chunk, and cells already present in the cache are skipped, so raising a replication count and rerunning computes only the new cells. Seeds are deterministic functions of the design cell rather than of the execution order, which means any single cell can be reproduced on its own without running the study that contains it.
+The studies are in `simulations/`, each writing its results to an `.rds` file beside it, apart from the two dichotomous studies, which were rerun for the revision with fresh data in every replication and are in `rev1/` (`fresh_rerun.R`). The original master-dataset versions of those two studies remain in `simulations/` for comparison. Three further scripts hold the calibration scans that fix the misfit levels, two of which the manuscript reads directly for @tbl-calibration and for the five-item calibration in the Method. Shared code, including the data generators and the plot theme, is in `R/helpers.R`. The seven studies comprise `r format(n_cells, big.mark = " ")` design cells and took about `r sprintf("%.0f", n_hours)` hours to run on ten M4 cores. Each study uses a resumable runner. Design cells are keyed on the columns of the design grid, results are checkpointed to disk after every chunk, and cells already present in the cache are skipped, so raising a replication count and rerunning computes only the new cells. Seeds are deterministic functions of the design cell rather than of the execution order, which means any single cell can be reproduced on its own without running the study that contains it.
 
-All results were produced with R 4.6.1 [@r2026] and `easyRasch2` [@johanssonEasyRasch2PsychometricAnalysis2026], under versions 1.1.0 and 1.1.1, of which 1.1.1 reproduces all of them. That package computes conditional item fit through `iarm` 0.4.3 [@mueller_iarm_2022] and estimates item parameters by conditional maximum likelihood with `psychotools` 0.7.6 [@zeileis_psychotools_2026]. The multidimensional dichotomous data were generated with `eRm` 1.0.10 [@mair_extended_2007], the polytomous data with the generators in `easyRasch2`, and the highest density intervals computed with `ggdist` 3.3.3 [@ggdist2025]. The phq9 data used to calibrate misfit severity are included in `easyRasch2`.
+All results were produced with R 4.6.1 [@r2026] and `easyRasch2` [@johanssonEasyRasch2PsychometricAnalysis2026], under versions 1.1.0 and 1.1.1 and, for the two dichotomous studies, 1.4.0. That package computes conditional item fit through `iarm` 0.4.3 [@mueller_iarm_2022] and estimates item parameters by conditional maximum likelihood with `psychotools` 0.7.6 [@zeileis_psychotools_2026]. The multidimensional dichotomous data were generated with `eRm` 1.0.10 [@mair_extended_2007], the polytomous data with the generators in `easyRasch2`, and the highest density intervals computed with `ggdist` 3.3.3 [@ggdist2025]. The phq9 data used to calibrate misfit severity are included in `easyRasch2`.
 
 # Use of large language models
 

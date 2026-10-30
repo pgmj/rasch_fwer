@@ -1,0 +1,260 @@
+# Supplementary tables {#apx-tables}
+
+## Interval convergence by condition
+
+```{r tbl-conv-appendix}
+#| tbl-cap: "Median cutoff interval width, relative to 10 000 iterations"
+relw |>
+  select(w, n, B, rel) |>
+  pivot_wider(names_from = B, values_from = rel) |>
+  arrange(w, n) |>
+  mutate(w = sprintf("%.3f", w)) |>
+  collapse_keys("w") |>
+  knitr::kable(digits = 3,
+               col.names = c("Width", "n", "B = 100", "B = 200", "B = 400",
+                             "B = 1000", "B = 2000", "B = 5000", "B = 10 000"))
+```
+
+*Note.* By interval width, number of iterations, and sample size. Values below 1 indicate an interval narrower than its nominal width. Detail behind @fig-convergence.
+
+## Familywise false positive rates by condition
+
+```{r tbl-fwe-appendix}
+#| tbl-cap: "Familywise false positive rate under the null conditions"
+fwe |>
+  select(arm, items, w, pred, B, obs) |>
+  pivot_wider(names_from = B, values_from = obs, names_prefix = "B = ") |>
+  arrange(items, w) |>
+  # w must be a string: kable(digits = 1) would otherwise round .90/.95/.99/
+  # .995/.999 to 0.9/0.9/1.0/1.0/1.0 and the rows become indistinguishable
+  mutate(w = sprintf("%.3f", w)) |>
+  collapse_keys(c("arm", "items", "w")) |>
+  knitr::kable(digits = 1,
+               col.names = c("Item set", "Items", "Width", "Predicted",
+                             "B = 100", "B = 200", "B = 400", "B = 1000",
+                             "B = 2000"))
+```
+
+*Note.* Percentages by item set, interval width, and number of iterations, with the prediction of @eq-fwer. Detail behind @fig-fwe.
+
+## Decision rules by condition
+
+```{r tbl-rules-appendix}
+#| tbl-cap: "Decision rules at the calibrated misfit level"
+r5 |>
+  mutate(metric = ifelse(is_mis, "Det", "FP"),
+         rule = factor(rule,
+                       levels = c("Interval, w = .999", "Marginal p",
+                                  "Westfall-Young", "Benjamini-Hochberg"),
+                       labels = c("Interval .999", "Marginal p", "WY", "BH"))) |>
+  summarise(pct = 100 * mean(flag, na.rm = TRUE),
+            .by = c(rule, arm, n, B, metric)) |>
+  pivot_wider(names_from = c(metric, B), values_from = pct, names_sep = " ") |>
+  select(rule, arm, n, starts_with("Det"), starts_with("FP")) |>
+  arrange(rule, arm, n) |>
+  collapse_keys(c("rule", "arm")) |>
+  knitr::kable(digits = 1, align = "llrrrrrrr",
+               col.names = c("Rule", "Items", "n",
+                             "Det 100", "Det 400", "Det 2000",
+                             "FP 100", "FP 400", "FP 2000"))
+```
+
+*Note.* By item set, sample size, and number of bootstrap iterations. Column headings give the metric and the value of $B$. Det is the detection rate over the misfitting items and FP the false positive rate over the fitting items, both in percent and averaged over the misfitting-item conditions within each cell. WY is the Westfall-Young step-down and BH the Benjamini-Hochberg procedure. Detail behind @fig-rules.
+
+## Infit and outfit by condition
+
+@tbl-outfit-appendix gives the design of the sixth study together with the misfit it injects on both scales and the false positive rates it produces. The injected infit is comparable across the two item sets by construction, which is what makes the detection comparison in @tbl-outfit interpretable. The injected outfit is not comparable, being substantially larger in the dichotomous set, and larger for the off-target item than the on-target one within each set. Detection nonetheless runs the other way, which is the point made in the section on conditional outfit.
+
+```{r tbl-outfit-appendix}
+#| tbl-cap: "Design and false positives of the infit versus outfit study"
+inj_tab <- R6 |>
+  filter(is_mis) |>
+  summarise(loc = first(s_stat$arms[[first(arm)]]$locs[first(mis)]),
+            infit = mean(infit_msq), outfit = mean(outfit_msq),
+            .by = c(arm, target, n))
+fp_tab <- R6 |>
+  filter(!is_mis) |>
+  summarise(fp_in = 100 * mean(f_in), fp_out = 100 * mean(f_out),
+            fp_any = 100 * mean(f_any), .by = c(arm, target, n))
+fp_tab |>
+  left_join(inj_tab, by = c("arm", "target", "n")) |>
+  mutate(Items = ifelse(arm == "dich20", "20 dich", "9 phq9"),
+         Target = c(none = "Null", on = "On target", off = "Off target")[target],
+         Target = factor(Target, levels = c("Null", "On target", "Off target")),
+         # the null conditions have no misfitting item, so no location or
+         # injected misfit to report
+         across(c(loc, infit, outfit),
+                \(x) ifelse(is.na(x), "-", sprintf("%.2f", x)))) |>
+  arrange(Items, Target, n) |>
+  select(Items, Target, n, loc, infit, outfit, fp_in, fp_out, fp_any) |>
+  collapse_keys(c("Items", "Target")) |>
+  knitr::kable(digits = 2, align = "llrrrrrrr",
+               col.names = c("Items", "Condition", "n", "Location",
+                             "Infit", "Outfit",
+                             "FP infit", "FP outfit", "FP union"))
+```
+
+*Note.* Location is the item location in logits relative to the person mean. Infit and Outfit are the mean observed values of the misfitting item. FP is the percentage of fitting items flagged, and Union flags an item when either statistic is significant. The null rows have no misfitting item, so their FP columns are the per-item false positive rates under a true model. Detail behind @tbl-outfit.
+
+## Monte Carlo error of the reported estimates
+
+The replication counts differ between studies because the studies estimate different quantities with different precision requirements. @tbl-mcse reports the Monte Carlo standard error of the key estimate from each study, computed from the cached simulation results. Proportions over independent replications use the binomial standard error. The interval convergence medians and the stability percentages use a cluster bootstrap that resamples replications or datasets, which respects the dependence of items within a dataset. The rule comparisons in the realistic misfit study are paired within replications, since all decision rules are computed from the same bootstrap, and their standard errors are correspondingly small. Two consequences for interpretation follow. First, every directional claim in the paper rests on a contrast that is at least three times its standard error, or on a pattern replicated across several conditions. Second, the per-condition stability percentages are the least precise estimates in the paper, which is why the Decision stability section pools them across item sets and sample sizes and the per-condition values in @tbl-stab-appendix are descriptive.
+
+```{r tbl-mcse}
+#| tbl-cap: "Monte Carlo standard errors of key estimates, by study"
+# convergence: worst-case cluster-bootstrap SE (w = .999, B = 2000, n = 250)
+cv <- do.call(rbind, lapply(seq_len(nrow(s_conv$grid)), function(i) {
+  r <- s_conv$res[[i]]
+  if (is.null(r)) return(NULL)
+  cbind(rep = s_conv$grid$rep[i], n = s_conv$grid$n[i], r)
+}))
+cvs <- cv[cv$n == 250 & abs(cv$w - 0.999) < 1e-9, ]
+set.seed(21)
+cv_bs <- replicate(300, {
+  rs <- sample(unique(cvs$rep), replace = TRUE)
+  a <- unlist(lapply(rs, function(r) cvs$width[cvs$rep == r & cvs$B == 2000]))
+  b <- unlist(lapply(rs, function(r) cvs$width[cvs$rep == r & cvs$B == 10000]))
+  median(a) / median(b)
+})
+cv_est <- median(cvs$width[cvs$B == 2000]) / median(cvs$width[cvs$B == 10000])
+
+# realistic misfit: paired detection-gain SE range across conditions
+MH <- bind_part(s_poly, "hdci", c("arm", "rep", "k", "n", "rho")) |>
+  filter(abs(w - 0.999) < 1e-9, B == 2000) |>
+  mutate(hflag = as.integer(code > 0))
+MP <- bind_part(s_poly, "pval", c("arm", "rep", "k", "n", "rho")) |>
+  filter(B == 2000) |>
+  mutate(fflag = as.integer(padj_fwer < al))
+MM <- inner_join(MH |> select(arm, rep, k, n, rho, item, hflag),
+                 MP |> select(arm, rep, k, n, rho, item, fflag),
+                 by = c("arm", "rep", "k", "n", "rho", "item")) |>
+  mutate(is_mis = mapply(function(a, k, it)
+    it %in% s_poly$arms[[a]]$mis[seq_len(k)], arm, k, item))
+gains <- MM |>
+  filter(abs(rho - 0.85) < 1e-9, k > 0, is_mis) |>
+  summarise(d = mean(fflag) - mean(hflag), .by = c(arm, k, n, rep)) |>
+  summarise(gain = 100 * mean(d), se = 100 * sd(d) / sqrt(length(d)),
+            .by = c(arm, k, n))
+
+# mechanism check: SE of the false positive contrast (independent runs)
+mech_fp <- bind_part(s_mech, "pval", c("rep", "k", "n")) |>
+  filter(B == 2000, k == 2, n == 1000, item != 5, item != 8) |>
+  summarise(fp = mean(padj_fwer < al, na.rm = TRUE), .by = rep)
+md_fp <- MP |>
+  filter(arm == "phq9", abs(rho - 0.85) < 1e-9, k == 2, n == 1000,
+         item != 5, item != 8) |>
+  summarise(fp = mean(fflag), .by = rep)
+mech_contrast <- 100 * (mean(mech_fp$fp) - mean(md_fp$fp))
+mech_se <- 100 * sqrt(var(mech_fp$fp) / nrow(mech_fp) +
+                        var(md_fp$fp) / nrow(md_fp))
+
+# infit versus outfit: paired per-replication SE of the detection gap
+io_gain <- R6 |>
+  filter(is_mis) |>
+  summarise(gain = 100 * mean(f_in - f_out),
+            se = 100 * sd(f_in - f_out) / sqrt(length(f_in)),
+            .by = c(arm, target, n)) |>
+  mutate(ratio = gain / se)
+
+# short scale: paired per-replication SE of the BH-minus-WY false positive gap
+io5 <- P7 |>
+  filter(k > 0, B == 2000) |>
+  summarise(fp_wy = mean(padj_fwer[!is_mis] < 0.05, na.rm = TRUE),
+            fp_bh = mean(padj_bh[!is_mis] < 0.05, na.rm = TRUE), .by = c(n, rep)) |>
+  summarise(gap = 100 * mean(fp_bh - fp_wy),
+            se = 100 * sd(fp_bh - fp_wy) / sqrt(length(fp_wy)), .by = n)
+
+# calibration: SE of mean anchor infit at rho = .85
+ai <- s_cal$anchor$infit[abs(s_cal$anchor$rho - 0.85) < 1e-9]
+cal_se <- sd(ai, na.rm = TRUE) / sqrt(sum(!is.na(ai)))
+
+# two-analyst disagreement: cluster-bootstrap SE per iteration count, plus the
+# paired SE of the B = 400 versus 2000 decline, which is the contrast the
+# iteration recommendation rests on and is far tighter than the marginals.
+set.seed(5)
+Dcl <- rate_p |>
+  filter(rho == 0.85, k > 0) |>
+  mutate(d = 2 * p * (1 - p)) |>
+  summarise(D = 1 - prod(1 - d), .by = c(arm, n, B, dataset)) |>
+  mutate(cl = paste(arm, n, dataset))
+dcls <- unique(Dcl$cl)
+dis_se <- vapply(sort(unique(Dcl$B)), function(B_) {
+  x <- Dcl[Dcl$B == B_, ]
+  100 * sd(replicate(300, mean(vapply(sample(dcls, replace = TRUE),
+                                      function(cc) x$D[x$cl == cc], numeric(1)))))
+}, numeric(1))
+dwide <- Dcl |>
+  select(cl, B, D) |>
+  pivot_wider(names_from = B, values_from = D, names_prefix = "B")
+dpair <- 100 * (dwide$B400 - dwide$B2000)
+dpair_se <- sd(dpair) / sqrt(length(dpair))
+
+# per-condition stability at the calibrated misfit level (FWER rule), and its
+# dataset-cluster bootstrap SE. Computed rather than hardcoded, so raising the
+# number of datasets cannot leave a stale range behind.
+set.seed(3)
+pc85 <- p85f |> summarise(pct = 100 * mean(p > 0 & p < 1), .by = c(arm, n, B))
+pc_se <- p85f |>
+  split(~ arm + n + B, drop = TRUE) |>
+  vapply(function(g) {
+    cls <- unique(g$cl)
+    sd(replicate(300, {
+      y <- do.call(rbind, lapply(sample(cls, replace = TRUE),
+                                 function(cc) g[g$cl == cc, ]))
+      100 * mean(y$p > 0 & y$p < 1)
+    }))
+  }, numeric(1))
+rng2 <- function(v) sprintf("%.1f to %.1f", min(v), max(v))
+
+mcse <- data.frame(
+  Study = c("Interval convergence", "Error rates over (w, B)",
+            "Realistic misfit", "Decision stability (pooled)",
+            "Decision stability (per condition)",
+            "Decision stability (disagreement)", "Mechanism check",
+            "Infit versus outfit", "Short scale", "Calibration"),
+  Replications = c("30", "250", "120", "10 x 25 seeds", "10 x 25 seeds",
+                   "10 x 25 seeds", "120", "250", "250", "60"),
+  Quantity = c("Relative interval width", "Familywise error rate",
+               "Detection gain, FWER vs interval",
+               "Unstable items (%)", "Unstable items (%)",
+               "Two-analyst disagreement (%)", "False positive contrast", "Detection gap, infit vs outfit",
+               "False positive gap, BH vs WY", "Mean infit of misfitting item"),
+  Estimate = c(sprintf("%.3f", cv_est), ".05 (nominal)",
+               sprintf("%.1f to %.1f", min(gains$gain), max(gains$gain)),
+               sprintf("%s to %s", pf("FWER p-value", 2000),
+                       pf("FWER p-value", 400)),
+               rng2(pc85$pct), rng2(dis$pct),
+               sprintf("%.1f", mech_contrast),
+               sprintf("%.1f to %.1f", min(io_gain$gain), max(io_gain$gain)),
+               sprintf("%.1f to %.1f", min(io5$gap), max(io5$gap)),
+               sprintf("%.2f", mean(ai, na.rm = TRUE))),
+  SE = c(sprintf("%.3f", sd(cv_bs)), sprintf("%.3f", sqrt(.05 * .95 / 250)),
+         sprintf("%.1f to %.1f", min(gains$se), max(gains$se)),
+         sprintf("%.1f", max(se400, se2000)), rng2(pc_se), rng2(dis_se),
+         sprintf("%.1f", mech_se),
+         sprintf("%.1f to %.1f", min(io_gain$se), max(io_gain$se)),
+         sprintf("%.1f to %.1f", min(io5$se), max(io5$se)),
+         sprintf("%.2f", cal_se))
+)
+knitr::kable(mcse)
+```
+
+*Note.* Convergence: cluster bootstrap over replications, worst case shown ($w$ = .999, $B$ = 2000, $n$ = 250). Error rates: binomial SE at the stated proportion with 250 replications. Realistic misfit: paired per-replication SE of the detection gain of the FWER p-value over the interval rule, range over the ten conditions at the calibrated misfit level. Stability: dataset-cluster bootstrap of the pooled and per-condition unstable-item percentages at the calibrated misfit level. Disagreement: the same bootstrap applied to the probability that two seeds disagree about at least one item, range over the four iteration counts. That marginal standard error overstates the uncertainty of the comparison between iteration counts, which is paired within dataset: the decline from B = 400 to B = 2000 is `r sprintf('%.1f', mean(dpair))` points with a standard error of `r sprintf('%.1f', dpair_se)`. Mechanism: SE of the false positive contrast between misfit mechanisms. Infit versus outfit: paired per-replication SE of the detection gap between the two statistics, range over the eight conditions. Short scale: paired per-replication SE of the false positive gap between Benjamini-Hochberg and Westfall-Young at five items, range over the two sample sizes. Calibration: SE of the mean infit at the calibrated level.
+
+## Decision stability by condition
+
+```{r tbl-stab-appendix}
+#| tbl-cap: "Seed-dependent flags by condition"
+unst_all <- rates |>
+  summarise(pct = 100 * mean(p > 0 & p < 1),
+            .by = c(rule, arm, rho, n, B)) |>
+  mutate(rho = ifelse(rho == 0, "none (null)", sprintf("%.2f", rho))) |>
+  pivot_wider(names_from = B, values_from = pct, names_prefix = "B = ") |>
+  arrange(rule, arm, rho, n) |>
+  collapse_keys(c("rule", "arm", "rho"))
+knitr::kable(unst_all, digits = 1,
+             col.names = c("Rule", "Item set", "Correlation", "n",
+                           "B = 100", "B = 400", "B = 1000", "B = 2000"))
+```
+
+*Note.* Percentage of items with a seed-dependent flag across 25 bootstrap seeds (10 datasets per condition). Values carry Monte Carlo standard errors of roughly 1 to 3 percentage points, see the section above.

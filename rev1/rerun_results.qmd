@@ -1,0 +1,447 @@
+---
+title: "Revision 1: results of the fresh-data rerun"
+subtitle: "APM-26-08-243, editor comments E3 and E4, Reviewer 1 comments 1 to 3"
+author: "Magnus Johansson"
+---
+
+```{r setup}
+#| echo: false
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+})
+source("../R/helpers.R")   # bind_part()
+
+T1 <- readRDS("fresh_dich_null.rds")     # tier 1, null, B to 10 000
+T2 <- readRDS("fresh_dich_misfit.rds")   # tier 2, k = 1 and 3, B to 2000
+s_grid <- readRDS("../simulations/infit_width_iterations_S2.rds")  # submitted Study 2
+s_conv <- readRDS("../simulations/infit_width_iterations_S1.rds")  # submitted Study 1
+AL <- 0.05
+WIDTHS <- c(0.90, 0.95, 0.99, 0.995, 0.999)
+```
+
+The design is in `rerun_plan.md` and the code in `fresh_rerun.R`. Both
+dichotomous studies of the submission are regenerated with fresh data in every
+replication, using the same 20 item locations and misfitting items. Each
+replication runs one bootstrap at the largest B, and every smaller B uses its
+first B draws. Comparisons with the submission use the cached results of
+Studies 1 and 2, which drew every sample from one master dataset per condition.
+
+# Integrity
+
+```{r integrity}
+keys <- c("rep", "k", "n")
+P1 <- bind_part(T1, "pval", keys) |> mutate(cell = paste(rep, k, n))
+H1 <- bind_part(T1, "hdci", keys) |> mutate(cell = paste(rep, k, n))
+P2 <- bind_part(T2, "pval", keys) |> mutate(cell = paste(rep, k, n))
+H2 <- bind_part(T2, "hdci", keys) |> mutate(cell = paste(rep, k, n))
+
+short_draws <- bind_rows(P1 |> mutate(tier = 1), P2 |> mutate(tier = 2)) |>
+  distinct(tier, cell, B, B_used) |>
+  filter(B_used < B) |>
+  summarise(n_short = n(), max_missing = max(B - B_used), .by = tier)
+
+data.frame(
+  tier = 1:2,
+  cells = c(nrow(T1$grid), nrow(T2$grid)),
+  failed = c(sum(vapply(T1$res, is.null, logical(1))),
+             sum(vapply(T2$res, is.null, logical(1)))),
+  hours = round(c(T1$elapsed_min, T2$elapsed_min) / 60, 2),
+  na_pvalues = c(sum(is.na(P1$padj_fwer)), sum(is.na(P2$padj_fwer)))
+) |>
+  left_join(short_draws, by = "tier") |>
+  knitr::kable()
+```
+
+All cells completed and no p-value is missing. Where a refit failed inside a
+bootstrap, the largest B used the draws that succeeded, and the table shows how
+many replication-by-B combinations were affected and by how many draws at most.
+
+```{r long}
+# One row per replication, B, item and rule
+long_rules <- function(P, H) {
+  P <- P |>
+    mutate(p_holm = p.adjust(p_marg, "holm"),
+           p_bonf = p.adjust(p_marg, "bonferroni"),
+           .by = c(cell, B))
+  lab <- c(p_marg = "Marginal", p_bonf = "Bonferroni", p_holm = "Holm",
+           padj_fwer = "Westfall-Young", padj_bh = "Benjamini-Hochberg",
+           p_marg_pool = "Marginal, joint", padj_fwer_pool = "Westfall-Young, joint")
+  LP <- P |>
+    select(cell, rep, k, n, B, item, all_of(names(lab))) |>
+    pivot_longer(all_of(names(lab)), names_to = "rule", values_to = "p") |>
+    mutate(rule = unname(lab[rule]), flag = as.integer(p < AL)) |>
+    select(-p)
+  LH <- H |>
+    transmute(cell, rep, k, n, B, item,
+              rule = sprintf("Interval %.3f", w), flag = as.integer(code > 0))
+  bind_rows(LP, LH)
+}
+mis_of <- function(k) T1$items$mis[seq_len(k)]
+stopifnot(identical(T1$items$mis, s_grid$misfit))   # same misfitting items
+L1 <- long_rules(P1, H1) |> mutate(is_mis = FALSE)
+L2 <- long_rules(P2, H2) |>
+  mutate(is_mis = mapply(function(k, it) it %in% mis_of(k), k, item))
+
+per_rep <- function(L, by) {
+  L |>
+    summarise(n_fp = sum(flag[!is_mis]), n_tp = sum(flag[is_mis]),
+              n_mis = sum(is_mis), n_fit = sum(!is_mis),
+              .by = all_of(c(by, "cell", "B", "rule"))) |>
+    mutate(any_fp = as.integer(n_fp > 0),
+           fdp = ifelse(n_fp + n_tp > 0, n_fp / (n_fp + n_tp), 0))
+}
+summ <- function(L, by) {
+  per_rep(L, by) |>
+    summarise(R = n(),
+              Det = 100 * sum(n_tp) / sum(n_mis),
+              FP = 100 * sum(n_fp) / sum(n_fit),
+              FWER = 100 * mean(any_fp),
+              se = 100 * sd(any_fp) / sqrt(n()),
+              FDR = 100 * mean(fdp),
+              .by = all_of(c(by, "B", "rule")))
+}
+```
+
+# E4: Table 4 extended to B = 10 000
+
+```{r tbl4}
+#| tbl-cap: "Familywise error under the null, 20 dichotomous items, pooled over n (2 000 replications per B)"
+S1 <- summ(L1, character(0))
+S1 |>
+  filter(rule %in% c("Marginal", "Bonferroni", "Holm", "Westfall-Young",
+                     "Benjamini-Hochberg", "Westfall-Young, joint")) |>
+  select(B, rule, FWER) |>
+  pivot_wider(names_from = rule, values_from = FWER) |>
+  rename(Marg = Marginal, Bonf = Bonferroni, WY = `Westfall-Young`,
+         BH = `Benjamini-Hochberg`, `WY joint` = `Westfall-Young, joint`) |>
+  arrange(B) |>
+  knitr::kable(digits = 1)
+```
+
+```{r tbl4-se}
+#| include: false
+se_wy <- max(S1$se[S1$rule == "Westfall-Young"])
+```
+
+Binomial standard errors are at most `r sprintf("%.2f", se_wy)` points per
+cell. The submitted Table 4, from the master-dataset study with 1 000
+replications per B, read 6.8, 5.2, 4.3, 4.2 and 3.8% for Westfall-Young at
+B = 100 to 2000.
+
+```{r wy-n}
+#| tbl-cap: "Westfall-Young familywise error under the null by sample size: fresh data (500 per n) and the submitted master-dataset study (250 per n)"
+fresh_n <- summ(L1, "n") |> filter(rule == "Westfall-Young") |>
+  mutate(data = "fresh")
+master_n <- bind_part(s_grid, "pval", keys) |>
+  filter(k == 0) |>
+  summarise(any = any(padj_fwer < AL), .by = c(rep, n, B)) |>
+  summarise(FWER = 100 * mean(any), .by = c(n, B)) |>
+  mutate(data = "master")
+bind_rows(fresh_n |> select(data, n, B, FWER), master_n) |>
+  pivot_wider(names_from = B, values_from = FWER, names_prefix = "B = ") |>
+  arrange(data, n) |>
+  knitr::kable(digits = 1)
+```
+
+**Summary for E3.** The rise at n = 1000 is gone in fresh data. The submitted
+Westfall-Young null rate at n = 1000 was 5.6 to 9.2% across B, against 3.8 to
+6.0% in the rerun, and from B = 400 the fresh rate at n = 1000 (3.8 to 4.2%) is
+in the range of the other sample sizes (2.2 to 5.0%). The rise was a property of
+the master dataset for that condition, as suspected, and not of the sample
+size. Pooled over sample sizes, the master-dataset study was higher at every common
+B, by 0.3 to 1.2 points (5.6% against 6.8% at B = 100, 3.5% against 3.8% at
+B = 2000).
+
+# R1.2: the studentization test
+
+The joint variant studentizes the observed and simulated statistics by moments
+computed over all B + 1 values, which removes the asymmetry that the
+explanation in the letter points to. If the explanation is right, the joint
+variant should show no excess at small B, and the two variants should agree at
+large B.
+
+```{r joint}
+#| tbl-cap: "Westfall-Young under the null, standard against joint studentization, paired within replication"
+pair_j <- per_rep(L1 |> filter(rule %in% c("Westfall-Young", "Westfall-Young, joint")),
+                  character(0)) |>
+  select(cell, B, rule, any_fp) |>
+  pivot_wider(names_from = rule, values_from = any_fp) |>
+  mutate(d = `Westfall-Young` - `Westfall-Young, joint`) |>
+  summarise(R = n(),
+            standard = 100 * mean(`Westfall-Young`),
+            joint = 100 * mean(`Westfall-Young, joint`),
+            diff = 100 * mean(d), se_diff = 100 * sd(d) / sqrt(n()),
+            .by = B) |>
+  arrange(B)
+pred <- data.frame(B = sort(unique(P1$B))) |>
+  mutate(c = qnorm(1 - (1 - 0.95^(1 / 20)) / 2),
+         predicted = 100 * (1 - (1 - 2 * pt(-c, B - 1))^20)) |>
+  select(-c)
+left_join(pair_j, pred, by = "B") |> knitr::kable(digits = 2)
+```
+
+```{r marg-item}
+#| tbl-cap: "Per-item rejection rate of the marginal p-value under the null (percent of item tests), standard against joint"
+attain <- function(B) 100 * floor(AL * (B + 1) - 1e-9) / (B + 1)
+L1 |>
+  filter(rule %in% c("Marginal", "Marginal, joint")) |>
+  summarise(rate = 100 * mean(flag), .by = c(B, rule)) |>
+  pivot_wider(names_from = rule, values_from = rate) |>
+  mutate(`attainable size` = attain(B)) |>
+  arrange(B) |>
+  knitr::kable(digits = 2)
+```
+
+The last column is the largest rejection probability a valid Monte Carlo test
+can have at that B, since p-values take the values $j/(B + 1)$ and $p < .05$
+admits only those below .05.
+
+```{r fig-joint}
+#| fig-width: 6.5
+#| fig-height: 3.4
+#| fig-cap: "Westfall-Young familywise error under the null against B, 20 dichotomous items, fresh data"
+fig_d <- bind_rows(
+  pair_j |> transmute(B, value = standard, what = "Standard studentization"),
+  pair_j |> transmute(B, value = joint, what = "Joint studentization"),
+  pred |> transmute(B, value = predicted, what = "Predicted, t asymmetry")
+) |>
+  mutate(what = factor(what, c("Standard studentization", "Joint studentization",
+                               "Predicted, t asymmetry")))
+ggplot(fig_d, aes(B, value, linetype = what, shape = what)) +
+  geom_hline(yintercept = 5, colour = "grey60") +
+  geom_line() + geom_point(size = 1.6) +
+  scale_x_log10(breaks = sort(unique(P1$B)),
+                labels = format(sort(unique(P1$B)), big.mark = " ")) +
+  scale_shape_manual(values = c(16, 1, NA)) +
+  labs(x = "Bootstrap iterations (B), log scale", y = "Familywise error (%)",
+       linetype = NULL, shape = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
+```
+
+**Summary for E4 and R1.2.** The explanation is confirmed on the same draws.
+With standard studentization the Westfall-Young rate was 5.6% at B = 100, 4.2%
+at 200 and between 3.4 and 3.8% from 400 to 10 000. With joint studentization
+it was 3.5% at B = 100 and between 3.1 and 3.6% at every B. The paired
+difference was 2.05 points at B = 100 (SE 0.32), 1.05 at 200 (SE 0.23), 0.45 at
+400 (SE 0.15), and 0.1 or less from 1000. The whole decline with B is therefore
+the studentization asymmetry, and joint studentization removes it. The
+t-based prediction gets the direction and the order of the decline right but
+understates its size at B = 100 (a predicted excess of 1.3 points over the
+large-B value against an observed 2.2).
+
+What remains is a level, not a trend. Both variants settle at about 3.4%,
+below the nominal 5%, and the rate does not move between B = 2000 and
+10 000. The per-item marginal tests show the same thing at their own level,
+rejecting 4.6 to 4.8% of fitting items against an attainable 5.0% at every B. A
+conservatism that does not depend on B cannot be Monte Carlo error. It belongs
+to the parametric bootstrap itself, whose reference distribution comes from
+estimated parameters (the composite null of R1.2). The polytomous studies were
+closer to nominal (4.2 to 5.0% from B = 400 in the cached results), so the
+size of the conservatism depends on the item format or set.
+
+Consequences. The letter's E4 and R1.2 responses can state the explanation as
+tested rather than proposed. Joint studentization makes the first step of the
+step-down an exact Monte Carlo test with respect to the fitted model, and in
+these data it made the error rate independent of B from B = 100. That is a
+candidate change for easyRasch2 (a decision outside this revision), and it would
+mean the 400-iteration floor is needed for reproducibility rather than for
+calibration.
+
+# E3 and Study 1: interval convergence from fresh data
+
+Width relative to the width at B = 10 000 of the same bootstrap, median over
+items and replications, as in the submission (which used a separate bootstrap
+at 10 000 iterations and 30 replications per n).
+
+```{r conv}
+relw_f <- H1 |>
+  mutate(width = hi - lo) |>
+  summarise(v = median(width), .by = c(n, w, B)) |>
+  mutate(rel = v / v[B == max(B)], .by = c(n, w))
+CV <- do.call(rbind, lapply(seq_len(nrow(s_conv$grid)), function(i) {
+  r <- s_conv$res[[i]]
+  if (is.null(r)) return(NULL)
+  cbind(rep = s_conv$grid$rep[i], n = s_conv$grid$n[i], r)
+}))
+relw_m <- CV |>
+  summarise(v = median(width), .by = c(n, w, B)) |>
+  mutate(rel = v / v[B == max(B)], .by = c(n, w))
+b99 <- function(relw) relw |>
+  summarise(m = median(rel), .by = c(w, B)) |>
+  summarise(B99 = min(B[m >= 0.99]), .by = w)
+spread <- function(relw) relw |>
+  summarise(sp = max(rel) - min(rel), .by = c(w, B)) |>
+  summarise(mx = max(sp)) |> pull(mx)
+```
+
+```{r conv-tbl}
+#| tbl-cap: "Median relative interval width (median over sample sizes), fresh data"
+relw_f |>
+  summarise(rel = median(rel), .by = c(w, B)) |>
+  pivot_wider(names_from = B, values_from = rel, names_prefix = "B = ") |>
+  select(-`B = 10000`) |>
+  knitr::kable(digits = 3)
+```
+
+```{r conv-cmp}
+#| tbl-cap: "Iterations reaching 99% of the reference width, and the largest spread between sample sizes"
+left_join(b99(relw_f) |> rename(`B99 fresh` = B99),
+          b99(relw_m) |> rename(`B99 submitted` = B99), by = "w") |>
+  knitr::kable()
+data.frame(data = c("fresh", "submitted"),
+           max_spread_between_n = c(spread(relw_f), spread(relw_m))) |>
+  knitr::kable(digits = 3)
+```
+
+**Summary for Study 1.** The convergence results replicate in fresh data. The
+iterations needed to reach 99% of the reference width are the same as
+submitted for every width (1000 for .90 and .95, 2000 for .99 and .995, 5000 for
+.999), the .999 interval reaches 0.76 of the reference at B = 100 as before,
+and the largest spread between sample sizes is smaller (0.008 against 0.018),
+with 500 replications per n instead of 30. The reference is now B = 10 000 of
+the same bootstrap rather than a separate one, which the Method must say.
+
+# Interval rule under the null against Equation 1
+
+```{r fwe-int}
+#| tbl-cap: "Familywise error of the interval rule under the null (percent), fresh data, with the Equation 1 prediction"
+S1 |>
+  filter(grepl("^Interval", rule)) |>
+  mutate(w = as.numeric(sub("Interval ", "", rule))) |>
+  select(w, B, FWER) |>
+  pivot_wider(names_from = B, values_from = FWER, names_prefix = "B = ") |>
+  mutate(pred = 100 * (1 - w^20)) |>
+  arrange(w) |>
+  mutate(w = sprintf("%.3f", w)) |>
+  knitr::kable(digits = 1)
+```
+
+```{r fwe-int-master}
+#| tbl-cap: "The same, submitted master-dataset study (Table 8, dichotomous rows)"
+bind_part(s_grid, "hdci", keys) |>
+  filter(k == 0) |>
+  summarise(any = any(code > 0), .by = c(rep, n, B, w)) |>
+  summarise(FWER = 100 * mean(any), .by = c(w, B)) |>
+  pivot_wider(names_from = B, values_from = FWER, names_prefix = "B = ") |>
+  mutate(pred = 100 * (1 - w^20)) |>
+  arrange(w) |>
+  mutate(w = sprintf("%.3f", w)) |>
+  knitr::kable(digits = 1)
+```
+
+**Summary.** The interval rule behaves as submitted. At w = .999 its familywise
+error was 30.1% at B = 100, 7.7% at 400 and 2.6% at 2000, against 29.7, 8.6 and
+2.9% submitted, and it reaches 1.6% at 10 000, against the Equation 1
+prediction of 2.0%. At B = 10 000 every width is at or below its prediction
+(ratios 0.80 to 0.98), consistent with mild positive dependence and with the
+conservatism found for the p-value rules. For widths .90 to .99 at B = 2000 the
+ratio of observed to predicted was 0.98 to 0.99.
+
+# Study 2 misfit conditions from fresh data
+
+## The detection and false positive trade-off (section 4.3)
+
+```{r tradeoff}
+#| tbl-cap: "Interval at w = .999, three misfitting items, n = 150: detection and per-item false positives by B"
+trade <- function(L) L |>
+  filter(k == 3, n == 150, rule == "Interval 0.999") |>
+  summarise(Det = 100 * mean(flag[is_mis]), FP = 100 * mean(flag[!is_mis]),
+            .by = B) |> arrange(B)
+art_m <- bind_part(s_grid, "hdci", keys) |>
+  filter(k == 3, n == 150, abs(w - 0.999) < 1e-9) |>
+  mutate(is_mis = item %in% s_grid$misfit) |>
+  summarise(Det = 100 * mean(code[is_mis] > 0), FP = 100 * mean(code[!is_mis] > 0),
+            .by = B) |> arrange(B)
+left_join(trade(L2), art_m, by = "B", suffix = c(" fresh", " submitted")) |>
+  knitr::kable(digits = 1)
+```
+
+```{r k1}
+#| tbl-cap: "Interval at w = .999, one misfitting item, n = 150: detection by B"
+L2 |>
+  filter(k == 1, n == 150, rule == "Interval 0.999", is_mis) |>
+  summarise(Det = 100 * mean(flag), .by = B) |> arrange(B) |>
+  knitr::kable(digits = 1)
+```
+
+## Reachability sequences (section 5.1)
+
+```{r reach}
+#| tbl-cap: "Detection by B at n = 150, fresh data"
+summ(L2 |> filter(n == 150), "k") |>
+  filter(rule %in% c("Holm", "Westfall-Young", "Benjamini-Hochberg")) |>
+  select(k, rule, B, Det) |>
+  pivot_wider(names_from = B, values_from = Det, names_prefix = "B = ") |>
+  arrange(k, rule) |>
+  knitr::kable(digits = 1)
+```
+
+The submission reported, at n = 150, Benjamini-Hochberg detection of 0, 8, 98,
+99 and 100% (one misfitting item) and 14, 71, 78, 79 and 80% (three), and
+Westfall-Young detection of 100% and 74% at every B.
+
+## Partial nulls: familywise error over fitting items and FDR (R1.1, R1.3)
+
+```{r partial}
+#| tbl-cap: "Familywise error over fitting items, fresh data, B = 2000"
+S2 <- summ(L2, c("k", "n"))
+show_rules <- c("Interval 0.999", "Marginal", "Holm", "Westfall-Young",
+                "Benjamini-Hochberg")
+S2 |>
+  filter(B == 2000, rule %in% show_rules) |>
+  select(k, n, rule, FWER) |>
+  pivot_wider(names_from = rule, values_from = FWER) |>
+  rename(Interval = `Interval 0.999`, WY = `Westfall-Young`,
+         BH = `Benjamini-Hochberg`) |>
+  arrange(k, n) |>
+  knitr::kable(digits = 1)
+```
+
+```{r fdr}
+#| tbl-cap: "False discovery rate, fresh data, B = 2000"
+S2 |>
+  filter(B == 2000, rule %in% show_rules) |>
+  select(k, n, rule, FDR) |>
+  pivot_wider(names_from = rule, values_from = FDR) |>
+  rename(Interval = `Interval 0.999`, WY = `Westfall-Young`,
+         BH = `Benjamini-Hochberg`) |>
+  arrange(k, n) |>
+  knitr::kable(digits = 1)
+```
+
+```{r holm-wy}
+#| tbl-cap: "Westfall-Young minus Holm detection (points), paired within replication, B = 2000"
+L2 |>
+  filter(B == 2000, is_mis, rule %in% c("Holm", "Westfall-Young")) |>
+  summarise(d = mean(flag), .by = c(k, n, cell, rule)) |>
+  pivot_wider(names_from = rule, values_from = d) |>
+  mutate(diff = 100 * (`Westfall-Young` - Holm)) |>
+  summarise(R = n(), gain = mean(diff), se = sd(diff) / sqrt(n()),
+            .by = c(k, n)) |>
+  arrange(k, n) |>
+  knitr::kable(digits = 2)
+```
+
+**Summary for the misfit conditions.** Every conclusion the submission drew from
+these conditions holds in fresh data, with levels a few points different.
+
+- The trade-off of section 4.3 replicates. With three misfitting items at
+  n = 150, interval detection at w = .999 fell from 83.9% at B = 100 to 66.5% at
+  1000 (submitted 80.8 to 65.3%), while false positives fell from 4.2% to 0.5%
+  (submitted 4.0 to 0.5%). With one misfitting item detection stayed at or above
+  99.6%.
+- The reachability sequences replicate. Benjamini-Hochberg detected 0, 6.8,
+  99.6, 99.6 and 100% of the single misfitting item at B = 100 to 2000
+  (submitted 0, 8, 98, 99, 100), and Holm shows the same floor, with 0% at
+  B = 100 and 200. Westfall-Young was flat at 99.6 to 100% and 76.9 to 77.9%
+  (submitted 100% and 74%).
+- Holm and Westfall-Young detection differed by at most 1.3 points at B = 2000
+  (SE 0.6).
+- Strong control fails in fresh data as it did in the cached results. At
+  n = 1000 the Westfall-Young rate over fitting items was 28.0% with one
+  misfitting item and 96.8% with three (cached 37.6 and 92.8%), and the
+  Benjamini-Hochberg FDR was 25.2% and 70.0% (cached 30.8 and 67.2%). This is the
+  strong misfit of rho = .15, so these rates are higher than at the anchored
+  level.

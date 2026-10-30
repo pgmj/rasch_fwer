@@ -1,0 +1,14 @@
+# Revision analyses render as plain Typst documents, like simulations/,
+# with code shown so every number can be audited against the caches.
+format:
+  typst:
+    toc: true
+    papersize: a4
+    fontsize: 9pt
+    df-print: kable
+    fig-format: png
+    fig-dpi: 200
+execute:
+  echo: true
+  warning: false
+  message: false

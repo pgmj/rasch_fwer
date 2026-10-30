@@ -123,6 +123,37 @@ theme_paper <- function(base_size = 11) {
     )
 }
 
+# ---- figure encodings: colour online, line type and shape in print -----------
+# The journal prints in black and white (editor's comment E6, revision 1), so
+# every figure distinguishes conditions by line type and point shape. Colour is
+# kept as a redundant cue for the online version, from colour-blind-safe
+# palettes checked with the dataviz skill's validator (OKLab, Machado et al.
+# 2009 CVD simulation):
+# - ordered variables (interval width, correlation) use one-hue blue ramps,
+#   monotone in lightness, so they read as an order and print as a grey ramp;
+# - the nominal decision rules use four Okabe-Ito hues, which pass the CVD and
+#   normal-vision floors over all pairs (worst CVD dE 11.0, normal 18.4).
+# Give colour, shape and linetype the same title so ggplot merges the legends.
+bw_shapes <- c(16, 1, 17, 2, 15, 0)
+bw_lines  <- c("solid", "42", "dotted", "dotdash", "longdash", "twodash")
+pal_ramp5 <- c("#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#0d366b")  # light -> dark
+pal_ramp3 <- c("#5598e7", "#256abf", "#0d366b")
+pal_rules <- c("Westfall-Young" = "#0072B2", "Benjamini-Hochberg" = "#D55E00",
+               "Interval, w = .999" = "#009E73", "Marginal p" = "#56B4E9")
+scale_bw <- function(name = ggplot2::waiver(), colours = NULL, shape = TRUE,
+                     linetype = TRUE) {
+  out <- list(if (is.null(colours)) {
+    ggplot2::scale_colour_grey(name = name, start = 0, end = 0.55)
+  } else {
+    ggplot2::scale_colour_manual(name = name, values = colours)
+  })
+  if (shape) out <- c(out, list(ggplot2::scale_shape_manual(name = name,
+                                                            values = bw_shapes)))
+  if (linetype) out <- c(out, list(ggplot2::scale_linetype_manual(name = name,
+                                                                  values = bw_lines)))
+  out
+}
+
 # ---- table display -----------------------------------------------------------
 # Blank a key column wherever it repeats within the group defined by the key
 # columns to its left, so each label is printed once per group instead of on
@@ -152,4 +183,38 @@ bind_part <- function(sim, part, grid_cols) {
     if (is.null(r)) return(NULL)
     cbind(sim$grid[i, grid_cols, drop = FALSE], r)
   }))
+}
+
+# ---- fresh-data dichotomous studies (revision 1) ------------------------------
+# Studies 1 and 2 were rerun for the revision with respondents generated anew in
+# every replication (rev1/fresh_rerun.R) instead of sampled from one master
+# dataset per condition. The null tier serves both studies: one bootstrap of
+# 10 000 iterations per replication, every smaller B read from its first draws.
+# This returns the two caches in the structure of the submitted
+# infit_width_iterations_S1.rds and _S2.rds, so the analysis chunks need no
+# change. own_cells / own_min count each run once in the Reproducibility totals.
+load_fresh_dich <- function(dir = "rev1") {
+  t1 <- readRDS(file.path(dir, "fresh_dich_null.rds"))
+  t2 <- readRDS(file.path(dir, "fresh_dich_misfit.rds"))
+  stopifnot(!any(vapply(t1$res, is.null, logical(1))),
+            !any(vapply(t2$res, is.null, logical(1))))
+  pcols <- c("B", "item", "p_marg", "padj_fwer", "padj_bh",
+             "p_marg_pool", "padj_fwer_pool")
+  slim <- function(r) list(hdci = r$hdci[, c("B", "w", "item", "code")],
+                           pval = r$pval[, pcols])
+  conv <- list(
+    grid = t1$grid[, c("rep", "n")],
+    res = lapply(t1$res, function(r) {
+      h <- r$hdci
+      data.frame(B = h$B, w = h$w, item = h$item, width = h$hi - h$lo)
+    }),
+    elapsed_min = t1$elapsed_min, own_cells = nrow(t1$grid),
+    own_min = t1$elapsed_min)
+  grid <- list(
+    grid = rbind(t1$grid[, c("rep", "k", "n")], t2$grid[, c("rep", "k", "n")]),
+    res = c(lapply(t1$res, slim), lapply(t2$res, slim)),
+    misfit = t1$items$mis,
+    elapsed_min = t1$elapsed_min + t2$elapsed_min,
+    own_cells = nrow(t2$grid), own_min = t2$elapsed_min)
+  list(conv = conv, grid = grid)
 }

@@ -1,0 +1,71 @@
+---
+# Title page for journal submission, uploaded separately from the anonymous
+# manuscript. Author metadata and the running head are inherited from
+# _quarto.yml, so this file and index.qmd cannot disagree about them.
+#
+#   quarto render titlepage.qmd
+#
+# It must stay in the project render list in _quarto.yml: outside it the file
+# does not inherit the shared author block and silently renders a title page
+# with no author on it. Being listed costs nothing, since the format declared
+# below means it produces only a docx, not a second preprint PDF.
+title: "Simulation-based cutoffs for conditional item fit in Rasch models: iterations, multiplicity correction, and decision stability"
+# APA repeats the title in bold above the first page of body text. That is right
+# for a manuscript and wrong here, where the body is only the declarations.
+suppress-title-introduction: true
+author:
+  - name: Magnus Johansson
+    affiliations:
+      - name: Centre for Psychiatry Research, Department of Clinical Neuroscience, Karolinska Institutet, Stockholm, Sweden
+    orcid: 0000-0003-1669-592X
+    email: magnus.johansson.3@ki.se
+    corresponding: true
+author-note:
+  disclosures:
+    conflict-of-interest: ~
+    financial-support: ~
+    data-sharing: ~
+    gratitude: ~
+    study-registration: ~
+    related-report: ~
+    authorship-agreements: ~
+format:
+  apaquarto-docx: default
+---
+
+# Statements and declarations
+
+## Ethical considerations
+
+Ethical approval was not required. The studies reported are computer
+simulations. The one empirical dataset used, the `phq9` responses distributed
+with the `easyRasch2` R package, is publicly available and fully anonymized.
+
+## Consent to participate
+
+Not applicable.
+
+## Consent for publication
+
+Not applicable.
+
+## Declaration of conflicting interests
+
+The author declared no potential conflicts of interest with respect to the
+research, authorship, and/or publication of this article.
+
+## Funding
+
+The author received no specific funding for this work.
+
+## Data availability
+
+All simulation code and the cached simulation results that every reported value
+is computed from are available at <https://github.com/pgmj/rasch_fwer>. The
+`phq9` dataset used to calibrate misfit severity is distributed with the
+[`easyRasch2` R package](https://cran.r-project.org/web/packages/easyRasch2/index.html).
+
+## Use of large language models
+
+Large language models were used in preparing this work, as described in the
+manuscript. The author takes responsibility for all content.

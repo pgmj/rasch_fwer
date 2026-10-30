@@ -1,0 +1,31 @@
+Registered S3 methods overwritten by 'vcdExtra':
+  method      from
+  pairs.table vcd 
+  print.Kappa vcd 
+Bootstrap p-values are based on 100 iterations, below the calibrated floor of 400.
+ℹ Below 400 the Westfall-Young correction is mildly liberal under the null, so the family-wise error rate is above the nominal level.
+ℹ See Johansson (2026), doi:10.31234/osf.io/7pqz4_v2.
+ℹ Raise `iterations` in RMitemInfitCutoff().
+This message is displayed once per session.
+    B pval_identical hdci_identical nested_matches pooled_vs_standard_maxdiff
+1 100           TRUE           TRUE           TRUE                 0.05940594
+2 400           TRUE           TRUE           TRUE                 0.01995012
+A/B passed: 1.4.0 reproduces the cached cell, nested evaluation matches
+  misfit       msq
+1  FALSE 0.9308515
+2   TRUE 1.3928193
+   tier   arm    n k   ok        sec actual_B kb
+1     1  dich  150 0 TRUE  130.05294    10000 83
+2     1  dich  250 0 TRUE  151.40027    10000 83
+3     1  dich  500 0 TRUE  201.03730    10000 83
+4     1  dich 1000 0 TRUE  285.91001    10000 83
+5     2  dich  150 3 TRUE   25.72374     2000 60
+6     2  dich  250 3 TRUE   30.61576     2000 60
+7     2  dich  500 3 TRUE   40.35650     2000 60
+8     2  dich 1000 3 TRUE   58.19377     2000 60
+9     3 sim15  250 0 TRUE  509.77303     9999 54
+10    3 sim15 1000 0 TRUE 1237.69525    10000 63
+11    3  phq9  150 0 TRUE  189.18781    10000 39
+12    3  phq9  250 0 TRUE  240.64385    10000 39
+13    3  phq9 1000 0 TRUE  602.84540    10000 39
+smoke test done, wall 20.6 min

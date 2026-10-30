@@ -1,0 +1,654 @@
+---
+title: "Revision 1: analyses from the cached results"
+subtitle: "APM-26-08-243, responses to Reviewer 1 comments 1, 3, 4 and 6 and editor comment E5"
+author: "Magnus Johansson"
+---
+
+```{r setup}
+#| echo: false
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+})
+source("../R/helpers.R")   # bind_part()
+
+s_grid  <- readRDS("../simulations/infit_width_iterations_S2.rds")
+s_poly  <- readRDS("../simulations/infit_width_iterations_poly_weak.rds")
+s_stab  <- readRDS("../simulations/infit_decision_stability.rds")
+s_mech  <- readRDS("../simulations/infit_misfit_mechanism.rds")
+s_short <- readRDS("../simulations/infit_short_scale.rds")
+
+AL <- 0.05
+```
+
+No simulation is run here. Every quantity is computed from the `.rds` caches in
+`simulations/`, the same files the submitted manuscript reads, using the same
+definitions of misfitting items as the manuscript's prep chunks. Section 1
+reproduces published numbers as a check on that.
+
+# Setup: one long table of flags per study
+
+Each study is turned into a long table with one row per replication, number of
+iterations, item and decision rule, holding the flag and whether the item is a
+misfitting one. Holm and Bonferroni are computed per replication and B from the
+marginal Monte Carlo p-values (`p_marg`), so they use the same simulated data
+and the same bootstrap as the other rules. They can only be computed where
+`p_marg` was stored, which excludes the mechanism check and the stability study.
+
+```{r long}
+# Adds Holm and Bonferroni within each analysis (replication x B)
+add_fwer_marg <- function(P, keys) {
+  P |>
+    mutate(p_holm = p.adjust(p_marg, "holm"),
+           p_bonf = p.adjust(p_marg, "bonferroni"),
+           .by = all_of(c(keys, "B")))
+}
+
+# P: p-value part, H: interval part (already tagged with is_mis)
+to_long <- function(P, H, keys) {
+  pcols <- intersect(c("p_marg", "p_bonf", "p_holm", "padj_fwer", "padj_bh"),
+                     names(P))
+  lab <- c(p_marg = "Marginal", p_bonf = "Bonferroni", p_holm = "Holm",
+           padj_fwer = "Westfall-Young", padj_bh = "Benjamini-Hochberg")
+  LP <- P |>
+    select(all_of(c(keys, "B", "item", "is_mis", pcols))) |>
+    pivot_longer(all_of(pcols), names_to = "rule", values_to = "p") |>
+    mutate(flag = as.integer(p < AL), rule = unname(lab[rule])) |>
+    select(-p)
+  LH <- H |>
+    filter(abs(w - 0.999) < 1e-9) |>
+    transmute(across(all_of(c(keys, "B", "item", "is_mis"))),
+              rule = "Interval .999", flag = as.integer(code > 0))
+  # cell identifies one replication (one simulated dataset), since replication
+  # numbers repeat across sample sizes and conditions
+  bind_rows(LH, LP) |>
+    filter(!is.na(flag)) |>
+    mutate(cell = do.call(paste, c(across(all_of(keys)), sep = "_")))
+}
+
+# --- Dichotomous, 20 items (Study 2) -----------------------------------------
+k_grid <- c("rep", "k", "n")
+tag_grid <- function(x) x |>
+  mutate(is_mis = mapply(function(k, it) it %in% s_grid$misfit[seq_len(k)],
+                         k, item))
+L_dich <- to_long(
+  bind_part(s_grid, "pval", k_grid) |> tag_grid() |> add_fwer_marg(k_grid),
+  bind_part(s_grid, "hdci", k_grid) |> tag_grid(),
+  k_grid) |>
+  mutate(set = "20 dich")
+
+# --- Polytomous, phq9 and sim15 (Study 3) ------------------------------------
+k_poly <- c("arm", "rep", "k", "n", "rho")
+tag_poly <- function(x) x |>
+  mutate(is_mis = mapply(function(a, k, it) it %in% s_poly$arms[[a]]$mis[seq_len(k)],
+                         arm, k, item))
+L_poly <- to_long(
+  bind_part(s_poly, "pval", k_poly) |> tag_poly() |> add_fwer_marg(k_poly),
+  bind_part(s_poly, "hdci", k_poly) |> tag_poly(),
+  k_poly) |>
+  mutate(rho = round(rho, 2),
+         set = ifelse(arm == "phq9", "9 phq9", "15 poly"))
+
+# --- Mechanism check, random responding, phq9 (Study 5) ----------------------
+k_mech <- c("rep", "k", "n")
+tag_mech <- function(x) x |>
+  mutate(is_mis = mapply(function(k, it) it %in% s_mech$mis[seq_len(k)], k, item))
+L_mech <- to_long(
+  bind_part(s_mech, "pval", k_mech) |> tag_mech(),
+  bind_part(s_mech, "hdci", k_mech) |> tag_mech(),
+  k_mech) |>
+  mutate(set = "9 phq9, random responding")
+
+# --- Short scale, 5 polytomous items (Study 7) -------------------------------
+k_short <- c("k", "n", "rep")
+tag_short <- function(x) x |> mutate(is_mis = k > 0 & item == s_short$mis)
+L_short <- to_long(
+  bind_part(s_short, "pval", k_short) |> tag_short() |> add_fwer_marg(k_short),
+  bind_part(s_short, "hdci", k_short) |> tag_short(),
+  k_short) |>
+  mutate(set = "5 poly")
+
+RULES <- c("Interval .999", "Marginal", "Bonferroni", "Holm",
+           "Westfall-Young", "Benjamini-Hochberg")
+```
+
+The per-replication summary below is the core of every table. Within one
+replication and rule it counts flags on fitting and misfitting items, then
+averages over replications.
+
+- **Det**: percentage of misfitting items flagged.
+- **FP**: percentage of fitting items flagged (the manuscript's false positive rate).
+- **FWER**: percentage of replications with at least one fitting item flagged. Under the null this is the familywise error rate of the manuscript. With misfitting items present it is the familywise error rate over the true null hypotheses, the quantity strong control concerns (R1.1).
+- **FDR**: mean false discovery proportion, false flags divided by all flags, with 0 when nothing is flagged (R1.3). Under the null it equals FWER.
+
+```{r summ}
+per_rep <- function(L, keys) {
+  L |>
+    summarise(n_fp  = sum(flag[!is_mis]),
+              n_tp  = sum(flag[is_mis]),
+              n_mis = sum(is_mis),
+              n_fit = sum(!is_mis),
+              .by = all_of(c(keys, "cell", "B", "rule"))) |>
+    mutate(any_fp = as.integer(n_fp > 0),
+           fdp = ifelse(n_fp + n_tp > 0, n_fp / (n_fp + n_tp), 0))
+}
+summ <- function(L, keys) {
+  per_rep(L, keys) |>
+    summarise(R = n(),
+              Det = 100 * sum(n_tp) / sum(n_mis),
+              FP = 100 * sum(n_fp) / sum(n_fit),
+              FWER = 100 * mean(any_fp),
+              FWER_se = 100 * sd(any_fp) / sqrt(n()),
+              FDR = 100 * mean(fdp),
+              FDR_se = 100 * sd(fdp) / sqrt(n()),
+              .by = all_of(c(keys, "B", "rule"))) |>
+    mutate(rule = factor(rule, RULES))
+}
+```
+
+# Check: the submitted numbers are reproduced
+
+```{r check}
+# Table 4: null familywise error, dichotomous, pooled over n
+t4 <- summ(L_dich |> filter(k == 0), character(0)) |>
+  filter(rule %in% c("Marginal", "Westfall-Young", "Benjamini-Hochberg")) |>
+  select(B, rule, FWER) |>
+  pivot_wider(names_from = rule, values_from = FWER) |>
+  arrange(B)
+stopifnot(all.equal(round(t4$`Westfall-Young`, 1), c(6.8, 5.2, 4.3, 4.2, 3.8)),
+          all.equal(round(t4$Marginal, 1), c(62.2, 61.2, 60.7, 60.6, 59.8)),
+          all.equal(round(t4$`Benjamini-Hochberg`, 1), c(0.0, 0.7, 4.2, 3.9, 4.6)))
+
+# Table 9: phq9, n = 1000, B = 2000, rho = .85, items pooled over k as in the paper
+t9 <- L_poly |>
+  filter(rho == 0.85, k > 0, arm == "phq9", n == 1000, B == 2000) |>
+  summarise(det = 100 * mean(flag[is_mis]), fp = 100 * mean(flag[!is_mis]),
+            .by = rule)
+stopifnot(round(t9$fp[t9$rule == "Marginal"], 1) == 16.5,
+          round(t9$det[t9$rule == "Westfall-Young"], 1) == 91.1,
+          round(t9$fp[t9$rule == "Westfall-Young"], 1) == 3.9)
+knitr::kable(t4, digits = 1, caption = "Table 4 of the submission, recomputed")
+```
+
+The assertions pass, so the long tables use the same data and definitions as
+the manuscript.
+
+# R1.1: familywise error over the true nulls under partial nulls
+
+```{r fwer-partial}
+fw_dich <- summ(L_dich |> filter(k > 0), c("k", "n"))
+fw_poly <- summ(L_poly |> filter(k > 0), c("set", "rho", "k", "n"))
+fw_mech <- summ(L_mech |> filter(k > 0), c("k", "n"))
+fw_short <- summ(L_short |> filter(k > 0), c("k", "n"))
+
+wide_metric <- function(d, metric, keys, B_ = 2000) {
+  d |>
+    filter(B == B_) |>
+    select(all_of(c(keys, "rule", metric))) |>
+    pivot_wider(names_from = rule, values_from = all_of(metric)) |>
+    select(all_of(keys), any_of(RULES)) |>
+    arrange(across(all_of(keys)))
+}
+```
+
+```{r tbl-fwer-poly}
+#| tbl-cap: "Familywise error over fitting items at the anchored misfit level (rho = .85), B = 2000"
+wide_metric(fw_poly |> filter(rho == 0.85), "FWER", c("set", "k", "n")) |>
+  rename(Interval = `Interval .999`, Marg = Marginal, Bonf = Bonferroni,
+         WY = `Westfall-Young`, BH = `Benjamini-Hochberg`) |>
+  knitr::kable(digits = 1)
+```
+
+```{r tbl-fwer-dich}
+#| tbl-cap: "Familywise error over fitting items, 20 dichotomous items (rho = .15), B = 2000"
+wide_metric(fw_dich, "FWER", c("k", "n")) |>
+  rename(Interval = `Interval .999`, Marg = Marginal, Bonf = Bonferroni,
+         WY = `Westfall-Young`, BH = `Benjamini-Hochberg`) |>
+  knitr::kable(digits = 1)
+```
+
+```{r tbl-fwer-other}
+#| tbl-cap: "Familywise error over fitting items, random responding (phq9) and the five-item scale, B = 2000"
+bind_rows(
+  wide_metric(fw_mech, "FWER", c("k", "n")) |> mutate(set = "phq9 random resp."),
+  wide_metric(fw_short, "FWER", c("k", "n")) |> mutate(set = "5 poly")
+) |>
+  select(set, k, n, any_of(RULES)) |>
+  rename(Interval = `Interval .999`, Marg = Marginal, Bonf = Bonferroni,
+         WY = `Westfall-Young`, BH = `Benjamini-Hochberg`) |>
+  knitr::kable(digits = 1)
+```
+
+```{r marg-fp}
+#| tbl-cap: "Per-item false positive rate of the uncorrected marginal p-value on fitting items, B = 2000"
+bind_rows(fw_poly |> filter(rho == 0.85), fw_dich |> mutate(set = "20 dich"),
+          fw_short |> mutate(set = "5 poly")) |>
+  filter(B == 2000, rule == "Marginal") |>
+  select(set, k, n, FP) |>
+  mutate(n = factor(n, sort(unique(n)))) |>
+  pivot_wider(names_from = n, values_from = FP, names_prefix = "n = ",
+              names_sort = TRUE) |>
+  arrange(set, k) |>
+  knitr::kable(digits = 1)
+```
+
+```{r fwer-rho}
+#| tbl-cap: "Westfall-Young familywise error over fitting items by misfit level, B = 2000"
+fw_poly |>
+  filter(B == 2000, rule == "Westfall-Young") |>
+  select(set, k, n, rho, FWER) |>
+  pivot_wider(names_from = rho, values_from = FWER, names_prefix = "rho ") |>
+  arrange(set, k, n) |>
+  knitr::kable(digits = 1)
+```
+
+```{r fwer-se}
+#| include: false
+se_max <- max(bind_rows(fw_poly, fw_dich, fw_mech, fw_short) |>
+                filter(B == 2000) |> pull(FWER_se))
+```
+
+Monte Carlo standard errors of these rates are at most `r sprintf("%.1f", se_max)`
+points (binomial over 120 to 250 replications).
+
+**Summary for R1.1.** Strong control fails for every rule in the same
+conditions, and the corrections do not differ much from each other. At the
+anchored level with n = 1000, the Westfall-Young familywise error over fitting
+items was 25.0% (phq9, one misfitting item) and 30.0% (phq9, two), with Holm at
+21.7% and 26.7% and Bonferroni at 21.7% and 22.5%. At n of 250 or below the
+Westfall-Young rate was between 0.8 and 8.3%, so the failure is a large-sample
+phenomenon. It grows with misfit strength (up to 72.5% at rho = .75) and is
+larger under random responding (82.5% with two misfitting items at n = 1000).
+
+The source is the per-item test, before any correction. The uncorrected marginal
+p-value, which should flag 5% of fitting items if each test were valid under its
+own null, flagged 13.6% and 19.8% of the fitting phq9 items at n = 1000, and
+50.6% of fitting items in the dichotomous set with three strongly misfitting
+items. A multiplicity correction applied to miscalibrated marginal tests cannot
+deliver strong control, which supports the response drafted in the letter.
+
+The interval at w = .999 has the lowest rates (3.3 to 14.2% at n = 1000) only
+because its implicit null familywise rate is about 1%, far below the 5% of the
+other rules. It is not evidence of better control.
+
+Westfall-Young is at or a few points above Holm and Bonferroni in every
+large-sample condition. That is the expected direction for the more powerful procedure in a
+setting where the fitting items carry a real signal from the contaminated
+total score.
+
+# R1.3: false discovery rate
+
+```{r tbl-fdr-poly}
+#| tbl-cap: "False discovery rate at the anchored misfit level (rho = .85), B = 2000"
+wide_metric(fw_poly |> filter(rho == 0.85), "FDR", c("set", "k", "n")) |>
+  rename(Interval = `Interval .999`, Marg = Marginal, Bonf = Bonferroni,
+         WY = `Westfall-Young`, BH = `Benjamini-Hochberg`) |>
+  knitr::kable(digits = 1)
+```
+
+```{r tbl-fdr-other}
+#| tbl-cap: "False discovery rate, 20 dichotomous items, random responding and the five-item scale, B = 2000"
+bind_rows(
+  wide_metric(fw_dich, "FDR", c("k", "n")) |> mutate(set = "20 dich"),
+  wide_metric(fw_mech, "FDR", c("k", "n")) |> mutate(set = "phq9 random resp."),
+  wide_metric(fw_short, "FDR", c("k", "n")) |> mutate(set = "5 poly")
+) |>
+  select(set, k, n, any_of(RULES)) |>
+  rename(Interval = `Interval .999`, Marg = Marginal, Bonf = Bonferroni,
+         WY = `Westfall-Young`, BH = `Benjamini-Hochberg`) |>
+  knitr::kable(digits = 1)
+```
+
+```{r fdr-b}
+#| tbl-cap: "Benjamini-Hochberg false discovery rate by B, anchored misfit level"
+fw_poly |>
+  filter(rho == 0.85, rule == "Benjamini-Hochberg") |>
+  select(set, k, n, B, FDR) |>
+  pivot_wider(names_from = B, values_from = FDR, names_prefix = "B = ") |>
+  arrange(set, k, n) |>
+  knitr::kable(digits = 1)
+```
+
+**Summary for R1.3.** Benjamini-Hochberg does not control the false discovery
+rate under partial nulls at large samples either. At the anchored level its FDR
+was 18.3% and 19.5% for phq9 at n = 1000 and 15.1% for the 15-item set with three
+misfitting items, against the nominal 5%. With strong misfit in the dichotomous
+set it reached 30.8% (one misfitting item) and 67.2% (three) at n = 1000, and 52.8%
+under random responding. At n of 250 or below and the anchored level, it ranged
+from 1.7 to 7.0%, so it is close to its target where contamination is weak. The
+mechanism is the same as in R1.1. The FDR of Benjamini-Hochberg was stable from
+B = 400 onward, so this is not a reachability effect.
+
+Westfall-Young had an FDR at or below that of Benjamini-Hochberg in every
+condition, which follows from flagging fewer items. Under the complete null the
+FDR equals the familywise error, so Table 4 of the submission already reports it
+for those conditions.
+
+For the letter: the reviewer's request can be met in full, and the result
+strengthens the argument rather than weakening it. Evaluated on its own
+criterion, Benjamini-Hochberg holds its FDR where the per-item tests are close
+to valid and fails where they are not, as every rule does.
+
+# E5 and R1.6: Holm and Bonferroni as further FWER procedures
+
+```{r holm-null}
+#| tbl-cap: "Familywise error under the null by item set and B, pooled over sample sizes"
+nul <- bind_rows(
+  summ(L_dich |> filter(k == 0), "set"),
+  summ(L_poly |> filter(k == 0), "set"),
+  summ(L_short |> filter(k == 0), "set")
+) |>
+  filter(rule %in% c("Bonferroni", "Holm", "Westfall-Young", "Benjamini-Hochberg"))
+nul |>
+  select(set, B, rule, FWER) |>
+  pivot_wider(names_from = rule, values_from = FWER) |>
+  rename(Bonf = Bonferroni, WY = `Westfall-Young`, BH = `Benjamini-Hochberg`) |>
+  mutate(set = factor(set, c("5 poly", "9 phq9", "15 poly", "20 dich"))) |>
+  arrange(set, B) |>
+  knitr::kable(digits = 1)
+```
+
+```{r holm-det}
+#| tbl-cap: "Detection by B for the four corrected rules, anchored misfit level (rho = .85)"
+fw_poly |>
+  filter(rho == 0.85,
+         rule %in% c("Holm", "Westfall-Young", "Benjamini-Hochberg")) |>
+  select(set, k, n, B, rule, Det) |>
+  pivot_wider(names_from = B, values_from = Det, names_prefix = "B = ") |>
+  mutate(rule = factor(rule, RULES)) |>
+  arrange(set, k, n, rule) |>
+  knitr::kable(digits = 1)
+```
+
+```{r holm-det-dich}
+#| tbl-cap: "Detection by B, 20 dichotomous items, n = 150 (the reachability example of the manuscript)"
+summ(L_dich |> filter(k > 0, n == 150), "k") |>
+  filter(rule %in% c("Holm", "Westfall-Young", "Benjamini-Hochberg")) |>
+  select(k, B, rule, Det) |>
+  pivot_wider(names_from = B, values_from = Det, names_prefix = "B = ") |>
+  mutate(rule = factor(rule, RULES)) |>
+  arrange(k, rule) |>
+  knitr::kable(digits = 1)
+```
+
+```{r holm-paired}
+# Paired Holm minus Westfall-Young detection at B = 2000, anchored level,
+# per replication, with its standard error
+pair <- L_poly |>
+  filter(rho == 0.85, k > 0, B == 2000, is_mis,
+         rule %in% c("Holm", "Westfall-Young")) |>
+  summarise(d = mean(flag), .by = c(set, k, n, rep, rule)) |>
+  pivot_wider(names_from = rule, values_from = d) |>
+  mutate(diff = 100 * (`Westfall-Young` - Holm)) |>
+  summarise(R = n(), gain = mean(diff, na.rm = TRUE),
+            se = sd(diff, na.rm = TRUE) / sqrt(sum(!is.na(diff))),
+            .by = c(set, k, n)) |>
+  arrange(set, k, n)
+knitr::kable(pair, digits = 2,
+             caption = "Westfall-Young minus Holm detection (points), paired, B = 2000")
+```
+
+**Summary for E5 and R1.6.** Holm and Bonferroni behave like
+Benjamini-Hochberg at small B and like Westfall-Young at large B.
+
+Under the null, both had a familywise error of 0.0% at B = 100 for 9, 15 and 20
+items, and 0.0% at B = 200 for 20 items, because their reachability floor is the
+same as that of Benjamini-Hochberg for a single standout, $k/(B + 1) < \alpha$.
+From B = 400 their null rates were 2.5 to 5.0%, similar to Westfall-Young.
+Detection follows the same pattern. Holm detected nothing at B = 100 in any
+anchored condition, while at B = 2000 Westfall-Young detected between -1.7 and
+1.7 points more than Holm, paired within replications, with standard errors of
+up to 2.0 points. Only one condition (15 items, three misfitting, n = 1000,
+1.4 points, SE 0.7) approaches two standard errors. With strong dichotomous misfit
+at n = 150 the gap was 2.2 points (71.7% against 73.9%).
+
+Holm is therefore almost as powerful as Westfall-Young once B clears the floor.
+The small power difference is consistent with the near-independence of the item
+statistics shown by Equation 1, which leaves little dependence for the maximum
+statistic to exploit. The practical advantage of Westfall-Young is the absence of
+a reachability floor, not power at large B. This changes the response to E5. The
+submission says the step-down "is more powerful than Bonferroni-type corrections
+at the same FWER" because it uses the dependence structure. The data support
+that only as a small effect, and the softened recommendation should rest on the
+floor instead.
+
+# E3 and R1.6: Westfall-Young null rate by item count and sample size
+
+```{r wy-null-n}
+#| tbl-cap: "Westfall-Young familywise error under the null, by item set, sample size and B"
+bind_rows(
+  summ(L_dich |> filter(k == 0), c("set", "n")),
+  summ(L_poly |> filter(k == 0), c("set", "n")),
+  summ(L_short |> filter(k == 0), c("set", "n"))
+) |>
+  filter(rule == "Westfall-Young") |>
+  mutate(R = max(R), .by = c(set, n)) |>
+  select(set, n, R, B, FWER) |>
+  pivot_wider(names_from = B, values_from = FWER, names_prefix = "B = ") |>
+  mutate(set = factor(set, c("5 poly", "9 phq9", "15 poly", "20 dich"))) |>
+  arrange(set, n) |>
+  select(set, n, R, any_of(paste0("B = ", c(100, 200, 400, 1000, 2000)))) |>
+  knitr::kable(digits = 1)
+```
+
+**Summary for E3.** The dichotomous null rate at n = 1000 is above the other
+sample sizes at every B (5.6 to 9.2% against 2.4 to 6.8%), while the polytomous
+studies, which generate fresh data, show no such pattern from B = 400 onward
+(5.0% for the 15-item set at n = 1000 at both B = 400 and 2000, and 5.0% and 6.7%
+for phq9 at n = 1000, each from 120 replications with a standard error of about
+2 points). This is consistent with a master-dataset artefact in the dichotomous
+study but cannot confirm it, since the polytomous null cells are small. The
+fresh-data rerun answers it directly.
+
+Within the range covered, there is no sign that calibration worsens with item
+count. At B of 400 or more the rate was 2.4 to 7.2% at every combination of item
+count (5, 9, 15, 20) and sample size, and every value above 6% was at n = 1000.
+
+## A check on the studentization explanation for the decline with B
+
+Each observed statistic is studentized by a mean and standard deviation
+estimated from the $B$ simulated values, so under the null it behaves like a $t$
+variable with $B - 1$ degrees of freedom, while the simulated statistics,
+standardized by their own moments, behave like normal ones. A rough prediction
+of the Westfall-Young null rate follows by treating the $k$ items as independent
+and asking how often a $t_{B-1}$ variable exceeds the normal critical value of
+the maximum. This ignores the dependence between items and the discreteness of
+the p-value, so it is an order-of-magnitude check only.
+
+```{r stud-pred}
+#| tbl-cap: "Predicted Westfall-Young null rate from the t-versus-normal asymmetry alone (percent)"
+pred <- expand.grid(k = c(5, 9, 15, 20), B = c(100, 200, 400, 1000, 2000)) |>
+  mutate(c = qnorm(1 - (1 - 0.95^(1 / k)) / 2),
+         pred = 100 * (1 - (1 - 2 * pt(-c, B - 1))^k))
+pred |>
+  select(k, B, pred) |>
+  pivot_wider(names_from = B, values_from = pred, names_prefix = "B = ") |>
+  knitr::kable(digits = 2)
+```
+
+```{r stud-obs}
+#| tbl-cap: "Observed Westfall-Young null rate pooled over sample sizes, fresh-data studies against the master-dataset study (percent)"
+bind_rows(
+  summ(L_poly |> filter(k == 0), character(0)) |> mutate(data = "fresh, 9 and 15 items"),
+  summ(L_short |> filter(k == 0), character(0)) |> mutate(data = "fresh, 5 items"),
+  summ(L_dich |> filter(k == 0), character(0)) |> mutate(data = "master, 20 items")
+) |>
+  filter(rule == "Westfall-Young") |>
+  select(data, R, B, FWER, FWER_se) |>
+  arrange(data, B) |>
+  knitr::kable(digits = 2)
+```
+
+**Summary for E4.** The prediction and the fresh-data observations agree at
+B = 100. The asymmetry predicts 5.7% for five items and about 6.0% for 9 to 15
+items, and the observed rates were 5.6% (SE 0.5) and 6.0% (SE 1.0). For 20
+dichotomous items it predicts 6.3% against the observed 6.8% (SE 0.8). The
+liberal rate at small B is therefore explained by studentizing with moments
+estimated from the simulated values, and the decline from B = 100 to B = 400 is
+the decline of that bias, of order $1/B$.
+
+At B = 400 and above the asymmetry predicts 5.0 to 5.3%, while all three sources
+are below it, at 4.2 to 4.6% at B = 400 and 3.8 to 4.7% at B = 2000. Pooled over
+the three sources at B = 2000 the rate is about 4.3%, roughly two standard errors
+below 5%. So beyond the small-B bias there is a mild conservatism of under one
+point that is present in fresh data too and is not a master-dataset effect. A
+plausible source is the approximate validity of the parametric bootstrap with
+estimated parameters (R1.2), but this analysis does not identify it.
+
+For the letter: the response to E4 can now explain the decline instead of
+deferring it, and the fresh-data rerun to B = 10 000 then tests whether the rate
+settles near 4.5% or continues downward.
+
+# R1.4: two-analyst disagreement computed from seed pairs
+
+For each dataset and B the 25 seeds give 25 flag patterns over the items. Two
+seeds disagree when their patterns differ, so the proportion of the 300 seed
+pairs that disagree is
+$1 - \sum_j \binom{c_j}{2} / \binom{S}{2}$, where $c_j$ counts the seeds that
+produced pattern $j$ and $S$ is the number of seeds with a complete result. This
+needs no assumption about dependence between items. Equation 5 of the
+submission is computed alongside from the per-item flag rates.
+
+```{r stab}
+k_stab <- c("arm", "k", "rho", "n", "dataset", "seed")
+SP <- bind_part(s_stab, "pval", k_stab) |>
+  transmute(arm, k, rho = round(rho, 2), n, dataset, seed, B, item,
+            rule = "Westfall-Young", flag = as.integer(padj_fwer < AL))
+SH <- bind_part(s_stab, "hdci", k_stab) |>
+  filter(abs(w - 0.999) < 1e-9) |>
+  transmute(arm, k, rho = round(rho, 2), n, dataset, seed, B, item,
+            rule = "Interval .999", flag = as.integer(code > 0))
+S <- bind_rows(SP, SH)
+
+ckeys <- c("rule", "arm", "k", "rho", "n", "B", "dataset")
+
+# drop seeds with any missing item result
+S <- S |>
+  filter(!any(is.na(flag)), .by = all_of(c(ckeys, "seed")))
+
+emp <- S |>
+  arrange(item) |>
+  summarise(pat = paste(flag, collapse = ""), .by = all_of(c(ckeys, "seed"))) |>
+  summarise(S = n(),
+            D_emp = 1 - sum(choose(table(pat), 2)) / choose(n(), 2),
+            .by = all_of(ckeys))
+
+# Equation 5 as submitted, and with the finite-seed correction S / (S - 1):
+# the plug-in 2p(1 - p) underestimates the per-item pair disagreement by the
+# factor (S - 1) / S, the usual bias of a plug-in binomial variance
+eq5 <- S |>
+  summarise(p = mean(flag), S = n(), .by = all_of(c(ckeys, "item"))) |>
+  summarise(D_eq5 = 1 - prod(1 - 2 * p * (1 - p)),
+            D_eq5c = 1 - prod(1 - 2 * p * (1 - p) * S / (S - 1)),
+            .by = all_of(ckeys))
+
+stab <- left_join(emp, eq5, by = ckeys)
+stopifnot(nrow(stab) == nrow(emp), all(stab$S >= 20))
+```
+
+```{r stab-check}
+# The submission's pooled values (Westfall-Young, rho = .85): 22, 10, 6, 4%
+pool <- stab |>
+  filter(rho == 0.85, k > 0) |>
+  summarise(Eq5 = 100 * mean(D_eq5), `Eq5 corrected` = 100 * mean(D_eq5c),
+            Empirical = 100 * mean(D_emp),
+            .by = c(rule, B)) |>
+  arrange(rule, B)
+stopifnot(all.equal(round(pool$Eq5[pool$rule == "Westfall-Young"]),
+                    c(22, 10, 6, 4)))
+knitr::kable(pool, digits = 1,
+             caption = "Two-analyst disagreement at the anchored level, pooled (percent)")
+```
+
+```{r stab-se}
+# Dataset-cluster bootstrap SE of the pooled empirical values, and of the
+# paired decline from B = 400 to B = 2000 (Westfall-Young)
+set.seed(20261022)
+x <- stab |> filter(rho == 0.85, k > 0, rule == "Westfall-Young") |>
+  mutate(cl = paste(arm, n, dataset))
+cls <- unique(x$cl)
+bs <- replicate(2000, {
+  # resampled clusters enter with their multiplicity as weight
+  w <- table(sample(cls, replace = TRUE))
+  y <- x |> filter(cl %in% names(w)) |> mutate(wt = as.numeric(w[cl]))
+  v <- y |> summarise(D = weighted.mean(D_emp, wt), .by = B)
+  c(setNames(v$D, v$B), dec = v$D[v$B == 400] - v$D[v$B == 2000])
+})
+knitr::kable(data.frame(quantity = rownames(bs), se = 100 * apply(bs, 1, sd)),
+             digits = 2, caption = "Cluster-bootstrap SE (points), Westfall-Young, rho = .85")
+```
+
+```{r stab-fig}
+#| fig-width: 7
+#| fig-height: 3.6
+#| fig-cap: "Empirical seed-pair disagreement against Equation 5, one point per dataset and B"
+stab |>
+  filter(k > 0) |>
+  ggplot(aes(D_eq5, D_emp)) +
+  geom_abline(linetype = 2) +
+  geom_point(alpha = 0.4, size = 1) +
+  facet_wrap(~rule) +
+  coord_equal() +
+  labs(x = "Equation 5", y = "Empirical, from seed pairs") +
+  theme_bw()
+```
+
+```{r stab-dev}
+#| tbl-cap: "Datasets where corrected Equation 5 and the empirical value differ by more than 5 points (counts over dataset and B, misfit conditions)"
+dev <- stab |>
+  filter(k > 0) |>
+  mutate(diff = D_eq5c - D_emp) |>
+  summarise(N = n(),
+            `Eq5 higher` = sum(diff > 0.05),
+            `Eq5 lower` = sum(diff < -0.05),
+            `largest gap` = max(abs(diff)),
+            .by = rule)
+knitr::kable(dev, digits = 2)
+```
+
+```{r stab-cond}
+#| tbl-cap: "Empirical disagreement by condition, Westfall-Young (percent)"
+stab |>
+  filter(rule == "Westfall-Young") |>
+  summarise(D = 100 * mean(D_emp), .by = c(arm, rho, n, B)) |>
+  pivot_wider(names_from = B, values_from = D, names_prefix = "B = ") |>
+  mutate(rho = ifelse(rho == 0, "null", sprintf("%.2f", rho))) |>
+  arrange(arm, rho, n) |>
+  knitr::kable(digits = 1)
+```
+
+**Summary for R1.4.** Pooled over datasets, the empirical seed-pair
+disagreement is almost identical to Equation 5 once the plug-in bias is removed.
+At the anchored level the Westfall-Young values are 22.6, 9.9, 6.0 and 4.0% at
+B = 100, 400, 1000 and 2000, against 22.4, 10.0, 6.0 and 4.0% for the corrected
+Equation 5 and 21.6, 9.6, 5.8 and 3.9% for the submitted one. The interval rule
+shows the same agreement.
+
+The pooled agreement hides a difference between the rules in individual
+datasets, which the figure shows. For the interval rule, corrected Equation 5 and
+the empirical value are within 8 points in every dataset, with no consistent
+direction, so the items' flips are close to independent. For the Westfall-Young
+rule, Equation 5 overstated the empirical disagreement by more than 5 points in
+44 of 480 dataset and B combinations, by up to 37 points, and never understated
+it by that much. These are the datasets where the step-down couples items, so
+that one seed's maximum statistic moves several decisions together. The
+manuscript's reasoning about dependence was therefore right for Westfall-Young,
+and Equation 5 is an upper bound per dataset there. The coupling is rare enough
+that the pooled values barely move.
+
+Consequences for the manuscript. Replace Equation 5 by the empirical proportion
+of disagreeing seed pairs, which needs no assumption. The reported values
+change little. Rounded as in the submission they become 23, 10, 6 and 4%. The
+cluster-bootstrap standard errors over datasets are 3.4, 2.5, 2.2 and 1.9 points,
+and the paired decline from B = 400 to B = 2000 is 5.9 points with a standard
+error of 1.6, as before. The small downward gap of the submitted values comes
+from estimating each item's flag rate from 25 seeds, which biases $2p(1-p)$ down
+by the factor $(S-1)/S$, and it disappears with the empirical measure.
+
+For the letter: the reviewer's concern about dependence is answered with data.
+The direct measure confirms the submitted pooled values, and the dependence
+they worried about is real for Westfall-Young in about one dataset in eleven but
+small on average. The limited basis of 10 datasets per condition remains, and
+the by-condition table shows that disagreement at B = 2000 still ranges from 0
+to 23% depending on how many items lie near the threshold.
