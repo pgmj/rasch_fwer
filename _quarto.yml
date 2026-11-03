@@ -77,6 +77,10 @@ format:
     # why this is a filter rather than a custom-style div in the source.
     filters:
       - notes.lua
+      # Numbers the appendix tables S1, S2 and heads the appendix "Online
+      # Supplement". See supplement.lua.
+      - path: supplement.lua
+        at: post-ast
     floatsintext: true
 
   # Uncomment for an HTML version. 

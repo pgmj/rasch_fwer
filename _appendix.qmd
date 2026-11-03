@@ -1,4 +1,30 @@
+```{=typst}
+// The appendix is submitted as an online supplement, so its tables are
+// numbered S1, S2 and its sections are not numbered. The docx gets the same
+// through supplement.lua.
+#pagebreak(weak: true)
+#heading(level: 1, numbering: none, outlined: false)[Online Supplement]
+#set heading(numbering: none)
+#counter(figure.where(kind: "quarto-float-tbl")).update(0)
+#set figure(numbering: n => "S" + str(n))
+```
+
 # Supplementary tables {#apx-tables}
+
+## Draws per tail
+
+```{r tbl-drawspertail}
+#| tbl-cap: "Expected number of simulated values per tail of the cutoff interval"
+ws <- c(0.90, 0.95, 0.99, 0.995, 0.999)
+bs <- c(100, 250, 400, 1000, 2000, 5000)
+dpt <- outer(ws, bs, function(w, B) (1 - w) / 2 * B)
+# Three decimals, trailing zeros dropped, so 0.125 and 250 both print as is.
+dpt <- sub("\\.?0+$", "", sprintf("%.3f", dpt))
+data.frame(w = sprintf("%.3f", ws), matrix(dpt, nrow = length(ws))) |>
+  knitr::kable(col.names = c("Width", paste("B =", bs)), align = "r")
+```
+
+*Note.* Computed as $(1 - w)B/2$, the average over the two tails. A highest density interval of a skewed distribution splits the excluded values unevenly, so one tail holds somewhat more and the other somewhat less. Values below roughly 5 mean that the interval endpoints are poorly estimated and the realized interval is narrower than its nominal width.
 
 ## Interval convergence by condition
 
@@ -280,3 +306,20 @@ knitr::kable(unst_all, digits = 1,
 ```
 
 *Note.* Percentage of items with a seed-dependent flag across 25 bootstrap seeds (10 datasets per condition). Values carry Monte Carlo standard errors of roughly 1 to 3 percentage points, see the section above.
+
+# Reproducibility {#apx-repro}
+
+```{r repro-prep}
+#| include: false
+sims    <- list(s_conv, s_grid, s_poly, s_stab, s_mech, s_stat, s_short)
+n_cells <- sum(vapply(sims, function(x) x$own_cells %||% nrow(x$grid), numeric(1)))
+n_hours <- sum(vapply(sims, function(x) x$own_min %||% x$elapsed_min, numeric(1))) / 60
+```
+
+Everything needed to reproduce this paper is in the repository at `r repo_url`, which contains the manuscript source, the simulation code, and the cached simulation results.
+
+The manuscript is written as a Quarto document [@Allaire_Quarto_2026]. Every number reported in the body, including those in the figures and tables, is computed at render time from the cached results rather than transcribed, so the reported values cannot drift from the data behind them. The abstract is the one exception: Quarto evaluates the document metadata before the code that loads the caches, so the few figures quoted there are typed and were checked against the body by hand. Rendering the manuscript reproduces the whole paper in seconds without rerunning any simulation. This is also relevant to assessing the use of large language models described in the main text. No reported number depends on a model or a person correctly copying it, and any reported quantity can be recomputed independently of the process that produced it.
+
+The studies are in `simulations/`, each writing its results to an `.rds` file beside it, apart from the two dichotomous studies, which were rerun for the revision with fresh data in every replication and are in `rev1/` (`fresh_rerun.R`). The original master-dataset versions of those two studies remain in `simulations/` for comparison. Three further scripts hold the calibration scans that fix the misfit levels, two of which the manuscript reads directly for @tbl-calibration and for the five-item calibration in the Method. Shared code, including the data generators and the plot theme, is in `R/helpers.R`. The seven studies comprise `r format(n_cells, big.mark = " ")` design cells and took about `r sprintf("%.0f", n_hours)` hours to run on ten M4 cores. Each study uses a resumable runner. Design cells are keyed on the columns of the design grid, results are checkpointed to disk after every chunk, and cells already present in the cache are skipped, so raising a replication count and rerunning computes only the new cells. Seeds are deterministic functions of the design cell rather than of the execution order, which means any single cell can be reproduced on its own without running the study that contains it.
+
+All results were produced with R 4.6.1 [@r2026] and `easyRasch2` [@johanssonEasyRasch2PsychometricAnalysis2026], under versions 1.1.0 and 1.1.1 and, for the two dichotomous studies, 1.4.0. As a check, a cell of the original dichotomous study rebuilt under 1.4.0 reproduced its p-values and interval flags to the last digit. The package computes conditional item fit through `iarm` 0.4.3 [@mueller_iarm_2022] and estimates item parameters by conditional maximum likelihood with `psychotools` 0.7.6 [@zeileis_psychotools_2026]. The multidimensional dichotomous data were generated with `eRm` 1.0.10 [@mair_extended_2007], the polytomous data with the generators in `easyRasch2`, and the highest density intervals computed with `ggdist` 3.3.3 [@ggdist2025]. The phq9 data used to calibrate misfit severity are included in `easyRasch2`.

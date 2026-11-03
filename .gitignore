@@ -16,3 +16,7 @@ apa_processed.docx
 /tests/
 example.qmd
 *copy*.qmd
+*.docx
+/rev1/submitted/
+/rev1/pre_shortening/
+/rev1/.quarto/
